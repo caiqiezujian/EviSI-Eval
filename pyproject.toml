@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "evisi-eval-agent"
-version = "0.1.0"
+version = "0.2.0"
 description = "Evidence-driven final SI transcript quality evaluator"
 requires-python = ">=3.10"
 dependencies = []
@@ -15,4 +15,3 @@ dev = ["pytest>=8.0.0"]
 
 [project.scripts]
 evisi-eval = "evisi_eval.cli:main"
-

@@ -14,3 +14,32 @@ def test_fact_cap_for_wrong_percentage():
     assert result["final_score"] <= 70
     assert result["attributed_errors"]
 
+
+def test_reference_assisted_proposition_mode():
+    card = build_card(
+        {
+            "sample_id": "s2",
+            "transcript": "I go to work.",
+            "offline_translation": "我去上班。"
+        }
+    )
+    good = evaluate_translation(card, "sys", "我去上班。")
+    bad = evaluate_translation(card, "sys", "我去打球。")
+    assert good["evaluation_mode"] == "reference_assisted"
+    assert good["final_score"] == 100
+    assert bad["final_score"] < 100
+    assert any(e["dimension"] == "core_proposition_coverage" for e in bad["attributed_errors"])
+
+
+def test_source_only_same_script_proposition_mode():
+    card = build_card(
+        {
+            "sample_id": "s3",
+            "transcript": "我去上班。"
+        }
+    )
+    good = evaluate_translation(card, "sys", "我去上班。")
+    bad = evaluate_translation(card, "sys", "我去打球。")
+    assert good["evaluation_mode"] == "source_only"
+    assert good["final_score"] == 100
+    assert bad["final_score"] < 100

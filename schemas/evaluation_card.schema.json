@@ -2,9 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "EvaluationCard",
   "type": "object",
-  "required": ["sample_id", "source_text", "facts"],
+  "required": ["sample_id", "transcript", "facts"],
   "properties": {
     "sample_id": {"type": "string"},
+    "transcript": {"type": "string"},
     "source_text": {"type": "string"},
     "offline_translation": {"type": ["string", "null"]},
     "domain": {"type": "string"},
@@ -14,7 +15,10 @@
       "type": "array",
       "items": {"$ref": "#/$defs/fact"}
     },
-    "propositions": {"type": "array"},
+    "propositions": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/proposition"}
+    },
     "relations": {"type": "array"},
     "terminology": {"type": "array"},
     "allowed_omissions": {"type": "array"},
@@ -38,7 +42,19 @@
         "acceptable_variants": {"type": "array", "items": {"type": "string"}},
         "notes": {"type": ["string", "null"]}
       }
+    },
+    "proposition": {
+      "type": "object",
+      "required": ["prop_id", "source_span", "canonical_meaning", "importance", "required"],
+      "properties": {
+        "prop_id": {"type": "string"},
+        "source_span": {"type": "string"},
+        "canonical_meaning": {"type": "string"},
+        "importance": {"type": "integer", "enum": [1, 2, 3]},
+        "required": {"type": "boolean"},
+        "target_reference": {"type": ["string", "null"]},
+        "notes": {"type": ["string", "null"]}
+      }
     }
   }
 }
-

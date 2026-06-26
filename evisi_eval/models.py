@@ -37,7 +37,7 @@ class Fact:
 @dataclass
 class EvaluationCard:
     sample_id: str
-    source_text: str
+    transcript: str
     offline_translation: str | None = None
     domain: str = "unspecified"
     src_lang: str = "en"
@@ -52,6 +52,7 @@ class EvaluationCard:
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
+        data["source_text"] = self.transcript
         data["facts"] = [fact.to_dict() for fact in self.facts]
         return data
 
@@ -60,7 +61,7 @@ class EvaluationCard:
         facts = [Fact(**item) for item in data.get("facts", [])]
         return cls(
             sample_id=data["sample_id"],
-            source_text=data["source_text"],
+            transcript=data.get("transcript") or data.get("source_text"),
             offline_translation=data.get("offline_translation"),
             domain=data.get("domain", "unspecified"),
             src_lang=data.get("src_lang", "en"),
@@ -73,6 +74,38 @@ class EvaluationCard:
             forbidden_losses=data.get("forbidden_losses", []),
             metadata=data.get("metadata", {}),
         )
+
+
+@dataclass
+class Proposition:
+    prop_id: str
+    source_span: str
+    canonical_meaning: str
+    importance: int = 2
+    required: bool = True
+    target_reference: str | None = None
+    notes: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class PropositionVerdict:
+    prop_id: str
+    source_span: str
+    target_reference: str | None
+    matched_target_span: str | None
+    verdict: str
+    confidence: float
+    deduction: float
+    severity: str
+    evidence_text: str
+    reason: str
+    review_required: bool = False
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 @dataclass
@@ -96,4 +129,3 @@ class FactVerdict:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
-

@@ -1,20 +1,31 @@
 # EviSI-Eval Agent Runbook
 
-This document explains how the current v0.1 agent runs from input data to final report.
+This document explains how the current v0.2 agent runs from input data to final report.
 
 ## 1. Current Scope
 
-The current agent is v0.1. It evaluates **key fact accuracy** in final simultaneous interpretation transcripts.
+The current agent is v0.2. It requires a source `transcript` and evaluates:
+
+- key fact accuracy
+- minimal proposition coverage
 
 It does not yet score:
 
-- core proposition coverage
 - logic relation preservation
 - SI expression adaptability
 - target-language acceptability
 - real latency or streaming delay
 
-The design is deliberately conservative: first make the fact layer stable, then expand to the other dimensions.
+The design is deliberately conservative: first make the transcript protocol, fact layer, and minimal proposition layer stable, then expand to the other dimensions.
+
+Without the source transcript, the system cannot evaluate translation fidelity. If it only sees "I go to work" and "I go play basketball" without the original, it cannot know which one is a correct translation.
+
+## 1.1 Two Evaluation Modes
+
+| Mode | Inputs | Use case |
+|---|---|---|
+| `reference_assisted` | transcript + offline_translation + si_translation | Use when an offline label/reference translation exists. |
+| `source_only` | transcript + si_translation | Use when no offline translation exists. Cross-lingual semantic judgment is conservative and should go to review when needed. |
 
 ## 2. Input Files
 
@@ -33,7 +44,7 @@ Each line is one source sample:
 ```json
 {
   "sample_id": "case_001",
-  "source_text": "Apple reported a 15% increase in revenue in Q2.",
+  "transcript": "Apple reported a 15% increase in revenue in Q2.",
   "offline_translation": "苹果公司报告第二季度收入增长15%。",
   "domain": "finance"
 }
@@ -42,7 +53,7 @@ Each line is one source sample:
 Fields:
 
 - `sample_id`: unique sample ID.
-- `source_text`: original source text.
+- `transcript`: source transcript. Required.
 - `offline_translation`: reference translation used only to help build the card. It is not the scoring target.
 - `domain`: optional domain label.
 
@@ -90,8 +101,9 @@ What happens:
 
 1. The agent reads each source sample.
 2. Rule extractors find key fact slots: percentages, money, numbers, dates and times, entities, polarity, direction, scope, and modality.
-3. The agent creates an `Evaluation Card`.
-4. The card is written to `data/labeled_cards.jsonl`.
+3. Minimal proposition units are created, using `offline_translation` as target-side reference when available.
+4. The agent creates an `Evaluation Card`.
+5. The card is written to `data/labeled_cards.jsonl`.
 
 Important: in real use, humans should review cards before scoring. The card is the scoring contract.
 
@@ -118,16 +130,25 @@ What happens:
 
 ## 5. Scoring Logic
 
-The full score starts from 100. In v0.1 only the fact dimension is active:
+The full score starts from 100. In v0.2 the active dimensions are:
 
 ```text
 fact_accuracy = 35 points
+core_proposition_coverage = 25 points
 ```
 
 The final score is:
 
 ```text
 final_score = min(100 - deductions, lowest_triggered_cap)
+```
+
+Attribution policy:
+
+```text
+One error is penalized once.
+If a fact-layer error already explains the meaning loss, the proposition verdict is kept for diagnostics but its deduction is suppressed.
+If there is no fact-layer error, the proposition layer can score the output.
 ```
 
 ## 6. Cap Rules
@@ -177,6 +198,23 @@ case_003 sys_c_missing_scope           score=60 cap=critical_scope_error
 powershell -ExecutionPolicy Bypass -File .\scripts\run_demo.ps1
 ```
 
+You can also run the GaoYao-style benchmark entry point:
+
+```powershell
+python run_eval.py `
+  --samples data/mode_demo_raw_samples.jsonl `
+  --outputs data/mode_demo_system_outputs.jsonl `
+  --run-name mode_demo
+```
+
+Output:
+
+```text
+results/mode_demo/evaluation_result/evisi_eval/
+```
+
+This directory contains `metrics.json`, `results.jsonl`, `bad_cases.jsonl`, `not_pass.jsonl`, and `report.html`.
+
 ## 10. API Key Setup
 
 The current evaluation works without an API key because v0.1 is rules-only.
@@ -208,7 +246,9 @@ Do not paste the API key into chat, source code, or README files.
 | CLI commands | `evisi_eval/cli.py` |
 | Evaluation Card builder | `evisi_eval/card_builder.py` |
 | Fact verification | `evisi_eval/verifier.py` |
+| Proposition verification | `evisi_eval/proposition_verifier.py` |
 | Scoring and caps | `evisi_eval/aggregator.py` |
+| Benchmark pipeline | `evisi_eval/pipeline.py` / `run_eval.py` |
 | Normalization rules | `evisi_eval/normalization.py` |
 | HTML/CSV report export | `evisi_eval/report.py` |
 | Data models | `evisi_eval/models.py` |
@@ -238,7 +278,8 @@ Recommended source case design:
 
 - Rule extraction can still over-extract or under-extract facts.
 - Human card review is required for serious evaluation.
-- Current system does not yet use LLM semantic equivalence.
+- Current proposition layer is minimal, not a full proposition graph.
+- Cross-lingual source-only mode still needs LLM or human review.
 - Chinese number words are only partially supported.
 - Proposition and relation layers are planned but not active.
 
@@ -247,5 +288,4 @@ Recommended source case design:
 1. Add 30-50 real samples.
 2. Manually review `Evaluation Card` facts and aliases.
 3. Add LLM verifier only for ambiguous or high-risk cases.
-4. Start v0.2 proposition and relation scoring after the fact layer is stable.
-
+4. Start full proposition decomposition and relation scoring after the minimal proposition layer is stable.

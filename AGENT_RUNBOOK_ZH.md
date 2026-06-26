@@ -1,20 +1,33 @@
 # EviSI-Eval Agent 运行手册
 
-本文档说明当前 v0.1 版本 Agent 如何从输入数据一步步运行到最终报告。
+本文档说明当前 v0.2 版本 Agent 如何从输入数据一步步运行到最终报告。
 
 ## 1. 当前范围
 
-当前 Agent 是 v0.1 版本，只评估**同传最终译文中的关键事实准确性**。
+当前 Agent 是 v0.2 版本。它要求必须提供源语 `transcript`，并评估两类内容：
+
+- 关键事实准确性
+- 最小命题覆盖度
 
 暂时不评分：
 
-- 核心命题覆盖度
 - 逻辑关系保持度
 - 同传表达适配性
 - 目标语可接受度
 - 真实延迟或流式输出时延
 
-这个范围是刻意收窄的：先把最客观的事实层做稳定，再扩展到其他维度。
+这个范围是刻意收窄的：先把 transcript、事实层和最小命题层做稳定，再扩展到完整命题、关系和表达层。
+
+没有 `transcript` 时，系统不能判断翻译忠实度。比如只看到“我去上班”或“我去打球”，但不知道原文是什么，就无法判断哪一个是好翻译。
+
+## 1.1 两种评测模式
+
+v0.2 支持两种模式：
+
+| 模式 | 输入 | 用途 |
+|---|---|---|
+| `reference_assisted` | transcript + offline_translation + si_translation | 有离线译文 label 时使用，适合更稳定地判断目标侧语义覆盖 |
+| `source_only` | transcript + si_translation | 没有离线译文时使用，跨语言语义判断会更保守，必要时进入 review |
 
 ## 2. 输入文件
 
@@ -33,7 +46,7 @@ data/labeled_raw_samples.jsonl
 ```json
 {
   "sample_id": "case_001",
-  "source_text": "Apple reported a 15% increase in revenue in Q2.",
+  "transcript": "Apple reported a 15% increase in revenue in Q2.",
   "offline_translation": "苹果公司报告第二季度收入增长15%。",
   "domain": "finance"
 }
@@ -42,7 +55,7 @@ data/labeled_raw_samples.jsonl
 字段含义：
 
 - `sample_id`：样本唯一 ID。
-- `source_text`：源文文本。
+- `transcript`：源语转录文本，必填。
 - `offline_translation`：离线参考译文，只用于辅助构建 Evaluation Card，不是评分标准。
 - `domain`：领域标签，可选。
 
@@ -107,7 +120,7 @@ python -m evisi_eval build-card `
 ```json
 {
   "sample_id": "case_001",
-  "source_text": "Apple reported a 15% increase in revenue in Q2.",
+  "transcript": "Apple reported a 15% increase in revenue in Q2.",
   "facts": [
     {
       "fact_id": "f_entity_001",
@@ -155,16 +168,25 @@ python -m evisi_eval run-eval `
 
 总分从 100 分开始。
 
-当前 v0.1 只启用事实维度：
+当前 v0.2 启用事实维度和最小命题维度：
 
 ```text
 关键事实准确性 = 35 分
+核心命题覆盖度 = 25 分
 ```
 
 最终分数公式：
 
 ```text
 final_score = min(100 - deductions, lowest_triggered_cap)
+```
+
+归因原则：
+
+```text
+同一错误只扣一次。
+如果事实层错误已经解释了语义损失，命题层只保留诊断信息，不重复扣分。
+如果没有事实错误，命题层才负责扣分。
 ```
 
 示例：
@@ -260,6 +282,30 @@ powershell -ExecutionPolicy Bypass -File .\scripts\run_demo.ps1
 4. labeled demo 构卡
 5. labeled demo 评分
 6. labeled demo 报告导出
+7. mode demo：同时演示 reference_assisted 与 source_only
+
+也可以直接运行 GaoYao 风格的总控入口：
+
+```powershell
+python run_eval.py `
+  --samples data/mode_demo_raw_samples.jsonl `
+  --outputs data/mode_demo_system_outputs.jsonl `
+  --run-name mode_demo
+```
+
+输出目录：
+
+```text
+results/mode_demo/evaluation_result/evisi_eval/
+```
+
+其中包含：
+
+- `metrics.json`
+- `results.jsonl`
+- `bad_cases.jsonl`
+- `not_pass.jsonl`
+- `report.html`
 
 ## 10. API Key 配置
 
@@ -298,7 +344,9 @@ python -m evisi_eval check-api
 | CLI 命令 | `evisi_eval/cli.py` |
 | Evaluation Card 构建 | `evisi_eval/card_builder.py` |
 | 事实核验 | `evisi_eval/verifier.py` |
+| 命题核验 | `evisi_eval/proposition_verifier.py` |
 | 评分与封顶 | `evisi_eval/aggregator.py` |
+| Benchmark 总控流程 | `evisi_eval/pipeline.py` / `run_eval.py` |
 | 归一化规则 | `evisi_eval/normalization.py` |
 | HTML/CSV 报告导出 | `evisi_eval/report.py` |
 | 数据模型 | `evisi_eval/models.py` |
@@ -328,7 +376,8 @@ python -m evisi_eval check-api
 
 - 规则抽取仍可能多抽或漏抽事实。
 - 严肃评测必须人工审查 Evaluation Card。
-- 当前版本还没有启用 LLM 语义等价判断。
+- 当前版本只实现了最小命题层，还不是完整命题图。
+- 跨语言 source-only 模式仍需要 LLM 或人工复核。
 - 中文数字词支持还不完整。
 - 命题层和关系层已经规划，但当前没有启用。
 
@@ -337,5 +386,4 @@ python -m evisi_eval check-api
 1. 增加 30-50 条真实样本。
 2. 人工审查 Evaluation Card 的 facts 和 aliases。
 3. 只对歧义或高风险样本加入 LLM verifier。
-4. 事实层稳定后，再启动 v0.2 的命题和关系评分。
-
+4. 最小命题层稳定后，再启动完整命题拆分和关系评分。

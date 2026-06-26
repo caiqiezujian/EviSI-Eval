@@ -12,3 +12,4 @@ data/labeled_cards.jsonl
 data/labeled_eval_results.jsonl
 reports/*.html
 reports/*.csv
+results/

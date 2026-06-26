@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from .models import EvaluationCard, Fact
+import re
+
+from .models import EvaluationCard, Fact, Proposition
 from .normalization import (
     DIRECTION_MAP,
     MODALITY_MAP,
@@ -18,7 +20,11 @@ from .normalization import (
 
 
 def build_card(sample: dict) -> EvaluationCard:
-    source_text = sample["source_text"]
+    transcript = sample.get("transcript") or sample.get("source_text")
+    if not transcript:
+        raise ValueError("Each sample must include transcript or source_text")
+    offline_translation = sample.get("offline_translation")
+    evaluation_mode = "reference_assisted" if offline_translation else "source_only"
     facts: list[Fact] = []
     counters: dict[str, int] = {}
 
@@ -38,35 +44,37 @@ def build_card(sample: dict) -> EvaluationCard:
             )
         )
 
-    for match in find_percentages(source_text):
+    for match in find_percentages(transcript):
         add_fact("percentage", match.span, match.value, 3, "percentage or percentage-point fact")
-    for match in find_money(source_text):
+    for match in find_money(transcript):
         add_fact("money", match.span, match.value, 3, "money fact")
-    for match in find_numbers(source_text):
+    for match in find_numbers(transcript):
         add_fact("number", match.span, match.value, 2, "numeric fact")
-    for match in find_dates(source_text):
+    for match in find_dates(transcript):
         add_fact("date_time", match.span, match.value, 2, "time or date fact", variants_for_date(match.span))
-    for match in find_entities(source_text):
+    for match in find_entities(transcript):
         add_fact("entity", match.span, match.value, 3, "named entity", variants_for_entity(match.span))
-    for match in find_negations(source_text):
+    for match in find_negations(transcript):
         add_fact("polarity", match.span, match.value, 3, "negation or polarity fact")
-    for match in find_enum_markers(source_text, DIRECTION_MAP):
+    for match in find_enum_markers(transcript, DIRECTION_MAP):
         add_fact("direction", match.span, match.value, 3, "direction fact")
-    for match in find_enum_markers(source_text, SCOPE_MAP):
+    for match in find_enum_markers(transcript, SCOPE_MAP):
         add_fact("scope", match.span, match.value, 3, "scope or boundary fact")
-    for match in find_enum_markers(source_text, MODALITY_MAP):
+    for match in find_enum_markers(transcript, MODALITY_MAP):
         add_fact("modality", match.span, match.value, 2, "modality fact")
 
     facts = _dedupe_fact_spans(facts)
+    propositions = _build_minimal_propositions(transcript, offline_translation)
 
     return EvaluationCard(
         sample_id=sample["sample_id"],
-        source_text=source_text,
-        offline_translation=sample.get("offline_translation"),
+        transcript=transcript,
+        offline_translation=offline_translation,
         domain=sample.get("domain", "unspecified"),
         src_lang=sample.get("src_lang", "en"),
         tgt_lang=sample.get("tgt_lang", "zh"),
         facts=facts,
+        propositions=[p.to_dict() for p in propositions],
         allowed_omissions=[
             {"span": "fillers, false starts, low-information repetitions", "reason": "reasonable SI compression"}
         ],
@@ -75,7 +83,13 @@ def build_card(sample: dict) -> EvaluationCard:
             for fact in facts
             if fact.importance == 3
         ],
-        metadata={"schema_version": "0.1.0", "builder": "rules_v0_1"},
+        metadata={
+            "schema_version": "0.2.0",
+            "builder": "rules_v0_2",
+            "evaluation_mode": evaluation_mode,
+            "transcript_required": True,
+            "offline_translation_used": bool(offline_translation),
+        },
     )
 
 
@@ -101,3 +115,31 @@ def _dedupe_fact_spans(facts: list[Fact]) -> list[Fact]:
         seen_spans.add(key)
         kept.append(fact)
     return sorted(kept, key=lambda fact: fact.fact_id)
+
+
+def _build_minimal_propositions(transcript: str, offline_translation: str | None) -> list[Proposition]:
+    source_units = _split_units(transcript)
+    target_units = _split_units(offline_translation or "")
+    propositions: list[Proposition] = []
+    for index, unit in enumerate(source_units, 1):
+        target_reference = target_units[index - 1] if index - 1 < len(target_units) else (offline_translation or None)
+        propositions.append(
+            Proposition(
+                prop_id=f"p_{index:03d}",
+                source_span=unit,
+                canonical_meaning=target_reference or unit,
+                importance=3 if len(source_units) == 1 else 2,
+                required=True,
+                target_reference=target_reference,
+                notes="minimal proposition unit; review manually for benchmark use",
+            )
+        )
+    return propositions
+
+
+def _split_units(text: str) -> list[str]:
+    text = (text or "").strip()
+    if not text:
+        return []
+    parts = [p.strip() for p in re.split(r"(?<=[。！？.!?])\s+|[；;]", text) if p.strip()]
+    return parts or [text]
