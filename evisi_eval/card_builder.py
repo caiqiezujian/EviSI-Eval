@@ -118,8 +118,22 @@ def _dedupe_fact_spans(facts: list[Fact]) -> list[Fact]:
 
 
 def _build_minimal_propositions(transcript: str, offline_translation: str | None) -> list[Proposition]:
-    source_units = _split_units(transcript)
+    source_units = [unit for unit in _split_units(transcript) if _is_informative_source_unit(unit)]
     target_units = _split_units(offline_translation or "")
+    if not source_units:
+        return []
+    if offline_translation and len(source_units) > 1 and not _looks_unit_aligned(source_units, target_units):
+        return [
+            Proposition(
+                prop_id="p_001",
+                source_span=transcript,
+                canonical_meaning=offline_translation,
+                importance=1,
+                required=True,
+                target_reference=offline_translation,
+                notes="document-level proposition because source/reference unit alignment is unreliable; review manually",
+            )
+        ]
     propositions: list[Proposition] = []
     for index, unit in enumerate(source_units, 1):
         target_reference = target_units[index - 1] if index - 1 < len(target_units) else (offline_translation or None)
@@ -135,6 +149,59 @@ def _build_minimal_propositions(transcript: str, offline_translation: str | None
             )
         )
     return propositions
+
+
+def _looks_unit_aligned(source_units: list[str], target_units: list[str]) -> bool:
+    if not target_units:
+        return False
+    if len(source_units) == 1:
+        return True
+    ratio = len(target_units) / len(source_units)
+    return 0.65 <= ratio <= 1.55 and abs(len(source_units) - len(target_units)) <= 2
+
+
+def _is_informative_source_unit(unit: str) -> bool:
+    text = (unit or "").strip()
+    if not text:
+        return False
+    if re.search(r"\d|[A-Z]{2,}|[\u4e00-\u9fff]{4,}", text):
+        return True
+    filler_words = {
+        "a",
+        "ah",
+        "all",
+        "and",
+        "anyway",
+        "basically",
+        "but",
+        "cool",
+        "er",
+        "gimme",
+        "give",
+        "i",
+        "just",
+        "know",
+        "let",
+        "like",
+        "me",
+        "mean",
+        "moment",
+        "okay",
+        "ok",
+        "right",
+        "so",
+        "that",
+        "the",
+        "think",
+        "uh",
+        "um",
+        "well",
+        "yeah",
+        "yes",
+        "you",
+    }
+    words = [w for w in re.findall(r"[A-Za-z]+", text.casefold()) if w not in filler_words]
+    return len(words) >= 2
 
 
 def _split_units(text: str) -> list[str]:

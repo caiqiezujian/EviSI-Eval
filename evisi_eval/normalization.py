@@ -74,10 +74,6 @@ SCOPE_MAP = {
     "only": "only",
     "仅": "only",
     "只": "only",
-    "all": "all",
-    "所有": "all",
-    "some": "some",
-    "一些": "some",
     "except": "except",
     "除外": "except",
 }
@@ -103,6 +99,12 @@ MODALITY_MAP = {
 
 KNOWN_ENTITY_ALIASES = {
     "apple": ["Apple", "Apple Inc.", "苹果", "苹果公司"],
+    "mark": ["Mark", "Marc", "马克"],
+    "spotify": ["Spotify"],
+    "bts": ["BTS", "防弹少年团"],
+    "covid19": ["COVID-19", "COVID 19", "新冠", "新冠疫情", "新冠肺炎"],
+    "sarscov2": ["SARS-CoV-2", "SARS CoV2", "严重急性呼吸综合征冠状病毒2"],
+    "poct": ["POCT", "POC T", "即时检验"],
     "google": ["Google", "Google LLC", "谷歌", "谷歌公司"],
     "unitednations": ["United Nations", "UN", "联合国"],
     "nato": ["NATO", "北约"],
@@ -198,13 +200,19 @@ def find_entities(text: str) -> list[Match]:
         "January", "February", "March", "April", "May", "June", "July", "August",
         "September", "October", "November", "December", "Monday", "Tuesday",
         "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+        "Round", "Robin", "Round-robin", "Yeah", "Load", "It", "Okay", "Cool",
+        "Um", "Ah", "Well", "So", "And", "But", "If", "Maybe", "Basically",
+        "Overall", "Great", "The", "This", "That",
     }
     matches: list[Match] = []
     for item in re.finditer(pattern, text):
         span = item.group(0)
         if span in stop or re.fullmatch(r"Q[1-4]", span):
             continue
-        matches.append(Match(span, normalize_simple(span), item.start(), item.end()))
+        normalized = normalize_simple(span)
+        if not _is_likely_entity_surface(span, normalized):
+            continue
+        matches.append(Match(span, normalized, item.start(), item.end()))
     for aliases in KNOWN_ENTITY_ALIASES.values():
         for alias in aliases:
             if re.search(r"[A-Za-z]", alias):
@@ -212,6 +220,19 @@ def find_entities(text: str) -> list[Match]:
             for item in re.finditer(re.escape(alias), text):
                 matches.append(Match(item.group(0), normalize_simple(alias), item.start(), item.end()))
     return _dedupe_matches(matches)
+
+
+def _is_likely_entity_surface(span: str, normalized: str) -> bool:
+    if normalized in KNOWN_ENTITY_ALIASES:
+        return True
+    if re.fullmatch(r"[A-Z]{2,}(?:[- ][A-Z0-9]+)*", span):
+        return True
+    if re.search(r"\d", span) and re.search(r"[A-Za-z]", span):
+        return True
+    if " " in span:
+        tokens = span.split()
+        return len(tokens) >= 2 and all(t[:1].isupper() for t in tokens) and any(normalize_simple(t) in KNOWN_ENTITY_ALIASES for t in tokens)
+    return False
 
 
 def variants_for_entity(span: str) -> list[str]:
