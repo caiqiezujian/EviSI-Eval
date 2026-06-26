@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EvaluationCard",
+  "type": "object",
+  "required": ["sample_id", "source_text", "facts"],
+  "properties": {
+    "sample_id": {"type": "string"},
+    "source_text": {"type": "string"},
+    "offline_translation": {"type": ["string", "null"]},
+    "domain": {"type": "string"},
+    "src_lang": {"type": "string"},
+    "tgt_lang": {"type": "string"},
+    "facts": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/fact"}
+    },
+    "propositions": {"type": "array"},
+    "relations": {"type": "array"},
+    "terminology": {"type": "array"},
+    "allowed_omissions": {"type": "array"},
+    "forbidden_losses": {"type": "array"},
+    "metadata": {"type": "object"}
+  },
+  "$defs": {
+    "fact": {
+      "type": "object",
+      "required": ["fact_id", "type", "source_span", "canonical_value", "importance", "must_preserve"],
+      "properties": {
+        "fact_id": {"type": "string"},
+        "type": {
+          "type": "string",
+          "enum": ["number", "percentage", "money", "unit", "date_time", "entity", "term", "polarity", "direction", "scope", "modality"]
+        },
+        "source_span": {"type": "string"},
+        "canonical_value": {},
+        "importance": {"type": "integer", "enum": [1, 2, 3]},
+        "must_preserve": {"type": "boolean"},
+        "acceptable_variants": {"type": "array", "items": {"type": "string"}},
+        "notes": {"type": ["string", "null"]}
+      }
+    }
+  }
+}
+

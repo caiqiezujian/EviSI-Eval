@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FactVerdict",
+  "type": "object",
+  "required": [
+    "fact_id",
+    "type",
+    "source_span",
+    "canonical_value",
+    "importance",
+    "must_preserve",
+    "translation_span",
+    "verdict",
+    "confidence",
+    "deduction",
+    "severity",
+    "evidence_text",
+    "reason",
+    "review_required",
+    "cap_trigger"
+  ],
+  "properties": {
+    "fact_id": {"type": "string"},
+    "type": {
+      "type": "string",
+      "enum": ["number", "percentage", "money", "unit", "date_time", "entity", "term", "polarity", "direction", "scope", "modality"]
+    },
+    "source_span": {"type": "string"},
+    "canonical_value": {},
+    "importance": {"type": "integer", "enum": [1, 2, 3]},
+    "must_preserve": {"type": "boolean"},
+    "translation_span": {"type": ["string", "null"]},
+    "normalized_translation_value": {},
+    "verdict": {"type": "string", "enum": ["correct", "incorrect", "missing", "ambiguous"]},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "deduction": {"type": "number", "minimum": 0},
+    "severity": {"type": "string", "enum": ["none", "minor", "major", "critical"]},
+    "evidence_text": {"type": "string"},
+    "reason": {"type": "string"},
+    "review_required": {"type": "boolean"},
+    "cap_trigger": {"type": ["string", "null"]}
+  }
+}
+

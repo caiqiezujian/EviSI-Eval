@@ -1,0 +1,7 @@
+{"sample_id":"demo_001","system_name":"bad_number_entity","si_translation":"谷歌第二季度收入增长了50%。"}
+{"sample_id":"demo_001","system_name":"good","si_translation":"苹果第二季度收入增长了15%。"}
+{"sample_id":"demo_002","system_name":"bad_polarity","si_translation":"该药已获批用于儿童。"}
+{"sample_id":"demo_003","system_name":"bad_direction","si_translation":"委员会周一批准了该提案。"}
+{"sample_id":"demo_004","system_name":"bad_scope_number","si_translation":"到九月，最多50名员工会受影响。"}
+{"sample_id":"demo_005","system_name":"partial","si_translation":"如果需求增加，预算可能会上升。"}
+

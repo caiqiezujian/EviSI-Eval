@@ -1,0 +1,6 @@
+{"sample_id":"demo_001","source_text":"Apple reported a 15% increase in revenue in Q2.","offline_translation":"苹果第二季度收入增长15%。","domain":"finance"}
+{"sample_id":"demo_002","source_text":"The drug is not approved for children.","offline_translation":"该药未获批用于儿童。","domain":"medical"}
+{"sample_id":"demo_003","source_text":"The committee rejected the proposal on Monday.","offline_translation":"委员会周一否决了该提案。","domain":"public_meeting"}
+{"sample_id":"demo_004","source_text":"At least 500 employees will be affected by September.","offline_translation":"到九月，至少500名员工将受到影响。","domain":"corporate"}
+{"sample_id":"demo_005","source_text":"The budget may rise to $5M if demand increases.","offline_translation":"如果需求增加，预算可能升至500万美元。","domain":"finance"}
+

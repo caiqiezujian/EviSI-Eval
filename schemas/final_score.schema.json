@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FinalScore",
+  "type": "object",
+  "required": ["sample_id", "system_name", "final_score", "dimension_scores", "attributed_errors"],
+  "properties": {
+    "sample_id": {"type": "string"},
+    "system_name": {"type": "string"},
+    "evaluation_scope": {"type": "array", "items": {"type": "string"}},
+    "final_score": {"type": "number"},
+    "raw_score_before_caps": {"type": "number"},
+    "dimension_scores": {"type": "object"},
+    "cap_triggered": {"type": "boolean"},
+    "cap_reason": {"type": ["string", "null"]},
+    "score_cap": {"type": ["number", "null"]},
+    "fact_verdicts": {"type": "array"},
+    "attributed_errors": {"type": "array"},
+    "non_penalized_items": {"type": "array"},
+    "metadata": {"type": "object"}
+  }
+}
+
