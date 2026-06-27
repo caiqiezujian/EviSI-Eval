@@ -4,7 +4,8 @@ import argparse
 from pathlib import Path
 
 from .aggregator import evaluate_translation
-from .api_check import check_openai_api
+from .agent_pipeline import run_agent_pipeline
+from .api_check import check_openai_api, check_provider_api
 from .card_builder import build_card
 from .io_utils import read_jsonl, write_jsonl
 from .importers import import_wide_files
@@ -32,6 +33,19 @@ def main() -> None:
     api = sub.add_parser("check-api", help="Safely check OpenAI API connectivity")
     api.add_argument("--model", default="gpt-4.1-mini")
 
+    provider_check = sub.add_parser("check-provider", help="Check a configured LLM provider")
+    provider_check.add_argument("--provider", default="deepseek", choices=["deepseek", "openai", "gemini", "custom"])
+
+    agent = sub.add_parser("run-agent", help="Run the evidence-driven LLM evaluation agent")
+    agent.add_argument("--samples", required=True)
+    agent.add_argument("--outputs", required=True)
+    agent.add_argument("--output-dir", default="results")
+    agent.add_argument("--run-name", default="agent_run")
+    agent.add_argument("--provider", default="deepseek", choices=["deepseek", "openai", "gemini", "custom"])
+    agent.add_argument("--review-provider", choices=["deepseek", "openai", "gemini", "custom"])
+    agent.add_argument("--skip-card-build", action="store_true")
+    agent.add_argument("--resume", action="store_true", help="Resume from cards and partial_results.jsonl")
+
     importer = sub.add_parser("import-wide", help="Import wide JSON/JSONL files into EviSI samples and outputs")
     importer.add_argument("--input", required=True, nargs="+")
     importer.add_argument("--samples-output", required=True)
@@ -46,6 +60,19 @@ def main() -> None:
         cmd_export_report(args.input, args.output)
     elif args.command == "check-api":
         cmd_check_api(args.model)
+    elif args.command == "check-provider":
+        cmd_check_provider(args.provider)
+    elif args.command == "run-agent":
+        cmd_run_agent(
+            args.samples,
+            args.outputs,
+            args.output_dir,
+            args.run_name,
+            args.provider,
+            args.review_provider,
+            args.skip_card_build,
+            args.resume,
+        )
     elif args.command == "import-wide":
         cmd_import_wide(args.input, args.samples_output, args.outputs_output)
 
@@ -94,6 +121,39 @@ def cmd_check_api(model: str) -> None:
     else:
         print(f"OpenAI API check failed: {result.get('reason')}")
         raise SystemExit(1)
+
+
+def cmd_check_provider(provider: str) -> None:
+    result = check_provider_api(provider)
+    if result["ok"]:
+        print(f"Provider check passed: provider={result['provider']} model={result['model']}")
+        return
+    print(f"Provider check failed: {result.get('reason', 'provider did not return the required JSON')}")
+    raise SystemExit(1)
+
+
+def cmd_run_agent(
+    samples_path: str,
+    outputs_path: str,
+    output_dir: str,
+    run_name: str,
+    provider: str,
+    review_provider: str | None,
+    skip_card_build: bool,
+    resume: bool,
+) -> None:
+    metrics = run_agent_pipeline(
+        samples_path=samples_path,
+        outputs_path=outputs_path,
+        output_dir=output_dir,
+        run_name=run_name,
+        provider_name=provider,
+        review_provider_name=review_provider,
+        skip_card_build=skip_card_build,
+        resume=resume,
+    )
+    print(f"Agent run complete: {metrics['num_results']} results; average={metrics['average_score']}")
+    print(f"Report: {metrics['paths']['report']}")
 
 
 def cmd_import_wide(input_paths: list[str], samples_output: str, outputs_output: str) -> None:
