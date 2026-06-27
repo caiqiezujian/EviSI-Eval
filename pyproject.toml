@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "evisi-eval-agent"
-version = "0.2.0"
-description = "Evidence-driven final SI transcript quality evaluator"
+version = "0.3.0"
+description = "Evidence-driven LLM agent for final simultaneous-interpretation quality evaluation"
 requires-python = ">=3.10"
 dependencies = []
 
