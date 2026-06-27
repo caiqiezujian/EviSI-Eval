@@ -28,6 +28,14 @@ def write_jsonl(path: str | Path, rows: Iterable[dict[str, Any]]) -> None:
             handle.write("\n")
 
 
+def append_jsonl(path: str | Path, row: dict[str, Any]) -> None:
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")))
+        handle.write("\n")
+
+
 def read_json(path: str | Path) -> dict[str, Any]:
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
@@ -36,4 +44,3 @@ def write_json(path: str | Path, data: dict[str, Any]) -> None:
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-

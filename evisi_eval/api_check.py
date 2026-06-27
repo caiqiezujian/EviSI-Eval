@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from .config import get_openai_api_key
+from .config import get_openai_api_key, get_provider_config
+from .llm_provider import HTTPJSONClient
 
 
 def check_openai_api(model: str = "gpt-4.1-mini") -> dict:
@@ -32,3 +33,21 @@ def check_openai_api(model: str = "gpt-4.1-mini") -> dict:
         "response_preview": text[:20],
     }
 
+
+def check_provider_api(provider: str) -> dict:
+    try:
+        config = get_provider_config(provider)
+        client = HTTPJSONClient(config)
+        response = client.generate_json(
+            "Return JSON only. Follow the requested schema exactly.",
+            {"task": "health_check", "required_output": {"ok": True}},
+            task="health_check",
+        )
+    except Exception as exc:
+        return {"ok": False, "provider": provider, "reason": str(exc)}
+    return {
+        "ok": response.data.get("ok") is True,
+        "provider": response.provider,
+        "model": response.model,
+        "request_id": response.request_id,
+    }
