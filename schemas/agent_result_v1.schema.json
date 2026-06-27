@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EviSI LLM Agent Result v1",
+  "type": "object",
+  "required": ["sample_id", "system_name", "transcript", "si_translation", "card_hash", "fact_verdicts", "proposition_verdicts", "relation_verdicts", "target_quality_issues", "dimension_scores", "evaluated_weight", "final_score", "attributed_errors", "review_queue", "metadata"],
+  "properties": {
+    "sample_id": {"type": "string"},
+    "system_name": {"type": "string"},
+    "transcript": {"type": "string"},
+    "offline_translation": {"type": ["string", "null"]},
+    "si_translation": {"type": "string"},
+    "card_hash": {"type": ["string", "null"]},
+    "fact_verdicts": {"type": "array"},
+    "proposition_verdicts": {"type": "array"},
+    "relation_verdicts": {"type": "array"},
+    "target_quality_issues": {"type": "array"},
+    "dimension_scores": {"type": "object"},
+    "evaluated_weight": {"type": "number", "minimum": 0, "maximum": 100},
+    "score_before_caps": {"type": "number", "minimum": 0, "maximum": 100},
+    "final_score": {"type": "number", "minimum": 0, "maximum": 100},
+    "cap_triggered": {"type": "boolean"},
+    "score_cap": {"type": ["number", "null"]},
+    "cap_candidates": {"type": "array"},
+    "cap_reasons": {"type": "array"},
+    "attributed_errors": {"type": "array"},
+    "review_queue": {"type": "array"},
+    "agent_trace": {"type": "array"},
+    "metadata": {"type": "object"}
+  }
+}

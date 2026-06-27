@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "EviSI Evaluation Card v1",
+  "type": "object",
+  "required": ["sample_id", "transcript", "facts", "propositions", "relations", "terminology", "allowed_omissions", "forbidden_losses", "metadata"],
+  "properties": {
+    "sample_id": {"type": "string", "minLength": 1},
+    "transcript": {"type": "string", "minLength": 1},
+    "offline_translation": {"type": ["string", "null"]},
+    "src_lang": {"type": "string"},
+    "tgt_lang": {"type": "string"},
+    "domain": {"type": "string"},
+    "facts": {"type": "array", "items": {"$ref": "#/$defs/fact"}},
+    "propositions": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/proposition"}},
+    "relations": {"type": "array", "items": {"$ref": "#/$defs/relation"}},
+    "terminology": {"type": "array"},
+    "allowed_omissions": {"type": "array"},
+    "forbidden_losses": {"type": "array"},
+    "metadata": {
+      "type": "object",
+      "required": ["schema_version", "prompt_version", "card_status", "card_hash", "system_outputs_visible_to_builder"]
+    }
+  },
+  "$defs": {
+    "fact": {
+      "type": "object",
+      "required": ["fact_id", "type", "source_span", "canonical_value", "importance", "must_preserve", "acceptable_variants", "extraction_confidence"],
+      "properties": {
+        "fact_id": {"type": "string"},
+        "type": {"enum": ["number", "percentage", "money", "unit", "date_time", "entity", "term", "polarity", "direction", "scope", "modality"]},
+        "source_span": {"type": "string"},
+        "canonical_value": {},
+        "importance": {"type": "integer", "minimum": 1, "maximum": 3},
+        "must_preserve": {"type": "boolean"},
+        "acceptable_variants": {"type": "array", "items": {"type": "string"}},
+        "extraction_confidence": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "proposition": {
+      "type": "object",
+      "required": ["prop_id", "source_span", "canonical_meaning", "importance", "required", "linked_facts", "extraction_confidence"],
+      "properties": {
+        "prop_id": {"type": "string"},
+        "source_span": {"type": "string"},
+        "canonical_meaning": {"type": "string"},
+        "target_reference": {"type": ["string", "null"]},
+        "importance": {"type": "integer", "minimum": 1, "maximum": 3},
+        "required": {"type": "boolean"},
+        "linked_facts": {"type": "array", "items": {"type": "string"}},
+        "extraction_confidence": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "relation": {
+      "type": "object",
+      "required": ["relation_id", "type", "source_cues", "head_prop_id", "dependent_prop_id", "canonical_meaning", "importance", "extraction_confidence"],
+      "properties": {
+        "relation_id": {"type": "string"},
+        "type": {"type": "string"},
+        "source_cues": {"type": "array", "items": {"type": "string"}},
+        "head_prop_id": {"type": "string"},
+        "dependent_prop_id": {"type": "string"},
+        "canonical_meaning": {"type": "string"},
+        "importance": {"type": "integer", "minimum": 1, "maximum": 3},
+        "extraction_confidence": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    }
+  }
+}

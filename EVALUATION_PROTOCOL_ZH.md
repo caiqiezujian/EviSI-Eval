@@ -1,4 +1,6 @@
-# EviSI-Eval v0.2 评测协议说明
+# EviSI-Eval v0.2 Legacy 评测协议说明
+
+> 本文档描述旧规则模式。新的 LLM Agent 评分协议见 `SCORING_SPEC_V1_ZH.md`；正式评测不再以本协议作为最终方案。
 
 ## 核心修正
 
@@ -126,4 +128,3 @@ I go to work.
 4. 为每个阶段设计 smoke / pilot / full preset。
 5. 每个输出都保留 bad cases 和 not pass。
 6. 对高风险或歧义样本使用 LLM/人工复核，而不是让 LLM 直接打总分。
-

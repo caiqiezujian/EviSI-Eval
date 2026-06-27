@@ -2,9 +2,32 @@
 
 面向**同传系统最终译文质量**的证据驱动评估框架。
 
-当前仓库实现的是 v0.2 版本，核心目标不是让大模型直接“打感觉分”，而是把评估流程拆成可审查、可复现、可扩展的 benchmark pipeline。
+当前仓库包含新的 **v0.3 LLM Agent 模式**和兼容用的 v0.2 规则模式。正式方向是让大模型理解原文、构建 Evaluation Card、逐项寻找译文证据并给出局部 verdict；最终扣分和封顶由 Python 确定性执行，禁止大模型直接输出总分。
 
-## 当前能力
+评分协议详见 [SCORING_SPEC_V1_ZH.md](SCORING_SPEC_V1_ZH.md)，可执行流程详见 [SKILL.md](SKILL.md)。
+
+## LLM Agent 能力
+
+- DeepSeek、OpenAI、Gemini 和任意 OpenAI-compatible Provider
+- LLM 驱动的事实、命题、关系构卡
+- 四维逐项核验：事实 40、命题 35、关系 15、目标语可理解性 10
+- 独立错误复核；低置信错误不自动扣分；封顶必须复核
+- 原文、参考译文、同传译文、逐条证据和维度得分的详细 HTML 报告
+- 运行清单、输入哈希、卡片哈希、坏例、复核队列和失败隔离
+
+运行入口：
+
+```powershell
+copy local_secrets.py.example local_secrets.py
+python -m evisi_eval check-provider --provider deepseek
+python run_agent.py --samples data/user_samples.jsonl --outputs data/user_outputs.jsonl --provider deepseek --run-name pilot_deepseek
+```
+
+## Legacy 规则模式
+
+v0.2 规则模式仅用于兼容和离线单元测试，不再代表正式评分方案。
+
+### 当前能力
 
 v0.2 已支持：
 
@@ -218,4 +241,3 @@ EviSI-Eval-Agent/
 4. 扩展完整命题拆分。
 5. 扩展逻辑关系层。
 6. 最后再加入同传表达适配和目标语可接受度。
-

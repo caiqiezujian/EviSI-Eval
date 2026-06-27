@@ -1,4 +1,6 @@
-# EviSI-Eval Agent Runbook
+# EviSI-Eval v0.2 Legacy Runbook
+
+> This document is retained for the legacy rule mode. The executable LLM Agent workflow is defined in `SKILL.md`.
 
 This document explains how the current v0.2 agent runs from input data to final report.
 

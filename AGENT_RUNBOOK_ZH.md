@@ -1,4 +1,6 @@
-# EviSI-Eval Agent 运行手册
+# EviSI-Eval v0.2 Legacy 运行手册
+
+> 本文档保留用于旧规则模式兼容。新的 LLM Agent 可执行流程见 `SKILL.md`。
 
 本文档说明当前 v0.2 版本 Agent 如何从输入数据一步步运行到最终报告。
 
