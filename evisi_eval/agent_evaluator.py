@@ -5,15 +5,17 @@ from typing import Any
 from .llm_provider import LLMClient, LLMResponse
 
 
-VERIFIER_PROMPT_VERSION = "dimension_verifiers_v1.0"
+VERIFIER_PROMPT_VERSION = "dimension_verifiers_v1.1"
 REVIEW_PROMPT_VERSION = "error_reviewer_v1.0"
 
 FACT_SYSTEM_PROMPT = """You are the Fact Verification Agent in an auditable simultaneous-interpretation benchmark.
 Compare every supplied fact with the anonymous final SI translation. Judge semantic equivalence, not surface-string identity. Accept transliteration, abbreviation, paraphrase, translated names, and domain-standard aliases when they identify the same value. Use the offline reference only as an aid; the source fact is authoritative.
 
+IMPORTANT — occurrence-level verification: Each fact in the card is an OCCURRENCE anchored to a specific source sentence (sentence_id / sentence_text are provided). You must judge whether that entity is correctly conveyed in the translation AT THE CORRESPONDING SEMANTIC POSITION — i.e., the part of the translation that maps to the source sentence for that occurrence. The same entity appearing elsewhere in the translation does NOT count as coverage of this occurrence. A fact can be wrong in one sentence even if correctly conveyed in another.
+
 Do not invent an alias merely because it looks similar. For required technical terms and acronyms, an unlisted truncation or expansion (for example POCT -> POC) is ambiguous unless the target context explicitly preserves the complete technical concept. A wrong participant role or named object is not an acceptable paraphrase.
 
-Return {"verdicts":[...]} with exactly one result per fact_id. Fields: fact_id, verdict, target_span, normalized_target_value, confidence, reason. verdict must be exact, equivalent, incorrect, missing, or ambiguous. target_span must be copied verbatim from the SI translation or null. Use incorrect only when contradictory/different evidence is present; use missing only after checking the whole translation; use ambiguous when evidence is insufficient. Do not output scores, deductions, caps, or stylistic judgments. JSON only."""
+Return {"verdicts":[...]} with exactly one result per fact_id. Fields: fact_id, verdict, target_span, normalized_target_value, confidence, reason. verdict must be exact, equivalent, incorrect, missing, or ambiguous. target_span must be copied verbatim from the SI translation or null. Use incorrect only when contradictory/different evidence is present; use missing only after checking the semantic position corresponding to the source sentence; use ambiguous when evidence is insufficient. Do not output scores, deductions, caps, or stylistic judgments. JSON only."""
 
 PROPOSITION_SYSTEM_PROMPT = """You are the Core Proposition Verification Agent for final simultaneous-interpretation output.
 For every proposition, decide whether the listener receives the same atomic event, action, state, conclusion, or recommendation. Simultaneous-interpretation compression is valid: shorter wording is compressed_covered when the complete core meaning remains. Evaluate the predicate and arguments while avoiding a second penalty for fact values listed in linked_facts; those values are handled by the fact agent.

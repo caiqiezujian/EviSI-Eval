@@ -4,6 +4,10 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 
+# Legacy fact-type set used only by the v0.2 / card-builder v1.0 backward-compat
+# path. The v1.1 occurrence layout uses the 17-enum set defined as
+# `_ENTITY_TYPES` in `agent_card_builder.py`. Keep this list stable for any
+# legacy LLM response or test fixture that still emits the flat `facts` array.
 FACT_TYPES = {
     "number",
     "percentage",

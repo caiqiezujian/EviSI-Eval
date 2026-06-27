@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "EviSI Evaluation Card v1",
+  "title": "EviSI Evaluation Card v1.1",
   "type": "object",
   "required": ["sample_id", "transcript", "facts", "propositions", "relations", "terminology", "allowed_omissions", "forbidden_losses", "metadata"],
   "properties": {
@@ -11,6 +11,21 @@
     "tgt_lang": {"type": "string"},
     "domain": {"type": "string"},
     "facts": {"type": "array", "items": {"$ref": "#/$defs/fact"}},
+    "entity_occurrences": {
+      "type": "array",
+      "description": "Flat list of sentence-level entity occurrences (Stage 1 of card builder v1.1). Mirrors the data embedded inside `sentences[].entity_occurrences`.",
+      "items": {"$ref": "#/$defs/entity_occurrence"}
+    },
+    "sentences": {
+      "type": "array",
+      "description": "Sentence-segmented view of the transcript. Each sentence carries its own entity_occurrences. Added in card builder v1.1.",
+      "items": {"$ref": "#/$defs/sentence"}
+    },
+    "global_entity_inventory": {
+      "type": "array",
+      "description": "Auxiliary index that aggregates occurrences of the same canonical entity across the whole document. NEVER use this as the primary scoring source — sentence-level entity_occurrences are authoritative.",
+      "items": {"$ref": "#/$defs/global_entity"}
+    },
     "propositions": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/proposition"}},
     "relations": {"type": "array", "items": {"$ref": "#/$defs/relation"}},
     "terminology": {"type": "array"},
@@ -24,21 +39,77 @@
   "$defs": {
     "fact": {
       "type": "object",
-      "required": ["fact_id", "type", "source_span", "canonical_value", "importance", "must_preserve", "acceptable_variants", "extraction_confidence"],
+      "required": ["fact_id", "source_span", "importance", "must_preserve", "extraction_confidence"],
       "properties": {
         "fact_id": {"type": "string"},
-        "type": {"enum": ["number", "percentage", "money", "unit", "date_time", "entity", "term", "polarity", "direction", "scope", "modality"]},
+        "type": {"type": "string"},
+        "entity_type": {
+          "enum": ["PERSON", "ORG", "GPE", "LOCATION", "TIME", "DATE", "NUMBER", "MONEY", "PERCENT", "PRODUCT", "EVENT", "LAW_POLICY", "PROJECT", "TECH_TERM", "DOMAIN_TERM", "KEY_CONCEPT", "OTHER"]
+        },
+        "sentence_id": {"type": "string"},
+        "sentence_text": {"type": "string"},
         "source_span": {"type": "string"},
         "canonical_value": {},
-        "importance": {"type": "integer", "minimum": 1, "maximum": 3},
+        "normalized_entity": {"type": "string"},
+        "importance": {
+          "oneOf": [
+            {"type": "integer", "minimum": 1, "maximum": 3},
+            {"enum": ["high", "medium", "low"]}
+          ]
+        },
+        "importance_numeric": {"type": "integer", "minimum": 1, "maximum": 3},
         "must_preserve": {"type": "boolean"},
+        "is_score_anchor": {"type": "boolean"},
+        "role_hint": {
+          "enum": ["subject", "object", "time", "place", "quantity", "topic", "term", "modifier", "reference", "other"]
+        },
         "acceptable_variants": {"type": "array", "items": {"type": "string"}},
         "extraction_confidence": {"type": "number", "minimum": 0, "maximum": 1}
       }
     },
+    "entity_occurrence": {
+      "type": "object",
+      "required": ["occurrence_id", "sentence_id", "sentence_text", "entity_text", "normalized_entity", "entity_type", "importance", "is_score_anchor", "role_hint", "extraction_reason"],
+      "properties": {
+        "occurrence_id": {"type": "string"},
+        "sentence_id": {"type": "string"},
+        "sentence_text": {"type": "string"},
+        "entity_text": {"type": "string"},
+        "normalized_entity": {"type": "string"},
+        "entity_type": {
+          "enum": ["PERSON", "ORG", "GPE", "LOCATION", "TIME", "DATE", "NUMBER", "MONEY", "PERCENT", "PRODUCT", "EVENT", "LAW_POLICY", "PROJECT", "TECH_TERM", "DOMAIN_TERM", "KEY_CONCEPT", "OTHER"]
+        },
+        "importance": {"enum": ["high", "medium", "low"]},
+        "is_score_anchor": {"type": "boolean"},
+        "role_hint": {
+          "enum": ["subject", "object", "time", "place", "quantity", "topic", "term", "modifier", "reference", "other"]
+        },
+        "extraction_reason": {"type": "string"}
+      }
+    },
+    "sentence": {
+      "type": "object",
+      "required": ["sentence_id", "sentence_text", "entity_occurrences"],
+      "properties": {
+        "sentence_id": {"type": "string"},
+        "sentence_text": {"type": "string"},
+        "entity_occurrences": {"type": "array", "items": {"$ref": "#/$defs/entity_occurrence"}}
+      }
+    },
+    "global_entity": {
+      "type": "object",
+      "required": ["normalized_entity", "entity_type", "occurs_in_sentences", "occurrence_ids"],
+      "properties": {
+        "normalized_entity": {"type": "string"},
+        "entity_type": {"type": "string"},
+        "occurs_in_sentences": {"type": "array", "items": {"type": "string"}},
+        "occurrence_ids": {"type": "array", "items": {"type": "string"}},
+        "note": {"type": "string"}
+      }
+    },
     "proposition": {
       "type": "object",
-      "required": ["prop_id", "source_span", "canonical_meaning", "importance", "required", "linked_facts", "extraction_confidence"],
+      "required": ["prop_id", "source_span", "canonical_meaning", "importance", "required", "extraction_confidence"],
       "properties": {
         "prop_id": {"type": "string"},
         "source_span": {"type": "string"},
@@ -46,7 +117,9 @@
         "target_reference": {"type": ["string", "null"]},
         "importance": {"type": "integer", "minimum": 1, "maximum": 3},
         "required": {"type": "boolean"},
+        "linked_entities": {"type": "array", "items": {"type": "string"}},
         "linked_facts": {"type": "array", "items": {"type": "string"}},
+        "notes": {"type": "string"},
         "extraction_confidence": {"type": "number", "minimum": 0, "maximum": 1}
       }
     },
