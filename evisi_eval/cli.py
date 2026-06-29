@@ -4,6 +4,7 @@ import argparse
 import json
 
 from .config import get_provider_config
+from .dataset import prepare_dataset
 from .importers import import_wide_files
 from .llm_provider import HTTPJSONClient
 from .pipeline import run_pipeline
@@ -13,17 +14,25 @@ PROVIDERS = ["deepseek", "openai", "gemini", "custom"]
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="evisi-eval", description="证据驱动的同传最终译文质量评测")
+    parser = argparse.ArgumentParser(prog="evisi-eval", description="EviSI-Eval v0.3 同传最终译文评测")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    run = sub.add_parser("run", help="运行完整 LLM Agent 评测流程")
-    run.add_argument("--samples", required=True, help="源文样本 JSONL")
-    run.add_argument("--outputs", required=True, help="同传系统输出 JSONL")
+    run = sub.add_parser("run", help="运行 16 阶段 LLM Agent 评测流程")
+    run.add_argument("--samples", required=True)
+    run.add_argument("--outputs", required=True)
     run.add_argument("--output-dir", default="results")
     run.add_argument("--run-name", default="evaluation_run")
     run.add_argument("--provider", default="deepseek", choices=PROVIDERS)
-    run.add_argument("--review-provider", choices=PROVIDERS)
     run.add_argument("--resume", action="store_true")
+    run.add_argument("--sample-id", action="append", dest="sample_ids")
+    run.add_argument("--system-name", action="append", dest="system_names")
+    run.add_argument("--limit-samples", type=int)
+    run.add_argument("--limit-outputs", type=int)
+
+    prepare = sub.add_parser("prepare-data", help="转换并按样本拆分为 v0.3 标准数据")
+    prepare.add_argument("--samples", required=True)
+    prepare.add_argument("--outputs", required=True)
+    prepare.add_argument("--output-dir", required=True)
 
     check = sub.add_parser("check-provider", help="验证模型配置和 JSON 输出")
     check.add_argument("--provider", default="deepseek", choices=PROVIDERS)
@@ -35,16 +44,22 @@ def main() -> None:
 
     args = parser.parse_args()
     if args.command == "run":
-        metrics = run_pipeline(
+        result = run_pipeline(
             samples_path=args.samples,
             outputs_path=args.outputs,
             output_dir=args.output_dir,
             run_name=args.run_name,
             provider_name=args.provider,
-            review_provider_name=args.review_provider,
             resume=args.resume,
+            sample_ids=args.sample_ids,
+            system_names=args.system_names,
+            limit_samples=args.limit_samples,
+            limit_outputs=args.limit_outputs,
         )
-        print(json.dumps(metrics, ensure_ascii=False, indent=2))
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    elif args.command == "prepare-data":
+        result = prepare_dataset(args.samples, args.outputs, args.output_dir)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
     elif args.command == "check-provider":
         client = HTTPJSONClient(get_provider_config(args.provider))
         response = client.generate_json(

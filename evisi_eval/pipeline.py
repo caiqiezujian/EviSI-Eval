@@ -5,17 +5,40 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from .card_builder import build_source_card
-from .config import get_provider_config, get_review_provider_name
-from .evaluator import evaluate_translation
+from .agent import PROTOCOL_VERSION, build_source_card, evaluate_system
+from .config import get_provider_config
 from .io_utils import append_jsonl, read_json, read_jsonl, write_json, write_jsonl
 from .llm_provider import HTTPJSONClient, LLMClient
 from .prompt_loader import prompt_manifest
 from .report import export_html_report
-from .scoring import DIMENSION_WEIGHTS, score_evaluation
+from .validation import DIMENSIONS
 
 
-PIPELINE_VERSION = "0.4.1"
+SOURCE_FILES = {
+    "source_01_units": "source/source_01_units.jsonl",
+    "source_02_anchors": "source/source_02_anchors.jsonl",
+    "source_03_events": "source/source_03_events.jsonl",
+    "source_04_relations": "source/source_04_relations.jsonl",
+    "source_cards": "source/source_cards.jsonl",
+}
+TARGET_FILES = {
+    "target_01_eval_units": "target/target_01_eval_units.jsonl",
+    "target_02_anchors": "target/target_02_anchors.jsonl",
+    "target_03_events": "target/target_03_events.jsonl",
+    "target_04_relations": "target/target_04_relations.jsonl",
+    "target_05_fluency": "target/target_05_fluency.jsonl",
+    "target_06_si_expression": "target/target_06_si_expression.jsonl",
+    "target_eval_cards": "target/target_eval_cards.jsonl",
+}
+SCORE_FILES = {
+    "score_01_anchor_judgements": "score/score_01_anchor_judgements.jsonl",
+    "score_02_event_judgements": "score/score_02_event_judgements.jsonl",
+    "score_03_relation_judgements": "score/score_03_relation_judgements.jsonl",
+    "score_04_global_review": "score/score_04_global_review.jsonl",
+    "score_05_dimension_scores": "score/score_05_dimension_scores.jsonl",
+    "score_06_final_results": "score/score_06_final_results.jsonl",
+}
+ARTIFACT_FILES = {**SOURCE_FILES, **TARGET_FILES, **SCORE_FILES}
 
 
 def run_pipeline(
@@ -24,93 +47,104 @@ def run_pipeline(
     output_dir: str = "results",
     run_name: str = "evaluation_run",
     provider_name: str = "deepseek",
-    review_provider_name: str | None = None,
     resume: bool = False,
-    primary_client: LLMClient | None = None,
-    review_client: LLMClient | None = None,
+    sample_ids: list[str] | None = None,
+    system_names: list[str] | None = None,
+    limit_samples: int | None = None,
+    limit_outputs: int | None = None,
+    client: LLMClient | None = None,
 ) -> dict[str, Any]:
-    samples = read_jsonl(samples_path)
-    outputs = read_jsonl(outputs_path)
-    _validate_inputs(samples, outputs)
-
-    if primary_client is None:
-        primary_client = HTTPJSONClient(get_provider_config(provider_name))
-    if review_client is None:
-        review_name = review_provider_name or get_review_provider_name(primary_client.provider_name)
-        review_client = HTTPJSONClient(get_provider_config(review_name))
+    all_samples = [_normalize_sample(row) for row in read_jsonl(samples_path)]
+    all_outputs = [_normalize_output(row) for row in read_jsonl(outputs_path)]
+    _validate_inputs(all_samples, all_outputs)
+    samples, outputs = _select_rows(
+        all_samples, all_outputs, sample_ids, system_names, limit_samples, limit_outputs
+    )
+    if client is None:
+        client = HTTPJSONClient(get_provider_config(provider_name))
 
     run_dir = Path(output_dir) / run_name
+    paths = {key: run_dir / value for key, value in ARTIFACT_FILES.items()}
+    paths.update(
+        {
+            "source_input": run_dir / "source/source_00_input.jsonl",
+            "target_input": run_dir / "target/target_00_input.jsonl",
+            "failures": run_dir / "failures.jsonl",
+            "metrics": run_dir / "metrics.json",
+            "manifest": run_dir / "run_manifest.json",
+            "report": run_dir / "report.html",
+        }
+    )
     run_dir.mkdir(parents=True, exist_ok=True)
-    paths = {
-        "cards": run_dir / "source_cards.jsonl",
-        "partial": run_dir / "partial_results.jsonl",
-        "results": run_dir / "results.jsonl",
-        "failures": run_dir / "failures.jsonl",
-        "metrics": run_dir / "metrics.json",
-        "manifest": run_dir / "run_manifest.json",
-        "report": run_dir / "report.html",
-    }
-    manifest = _manifest(samples_path, outputs_path, primary_client, review_client)
+    manifest = _manifest(samples_path, outputs_path, samples, outputs, client)
     if resume and paths["manifest"].exists():
         _assert_resume_compatible(read_json(paths["manifest"]), manifest)
     elif not resume:
-        for key in ("cards", "partial", "failures"):
-            write_jsonl(paths[key], [])
+        for path in paths.values():
+            if path.suffix == ".jsonl":
+                write_jsonl(path, [])
     write_json(paths["manifest"], manifest)
+    write_jsonl(paths["source_input"], samples)
+    write_jsonl(paths["target_input"], outputs)
 
     cards = {
-        str(item["sample_id"]): item
-        for item in (read_jsonl(paths["cards"]) if resume and paths["cards"].exists() else [])
+        str(row["sample_id"]): row
+        for row in (read_jsonl(paths["source_cards"]) if resume else [])
     }
-    failures = read_jsonl(paths["failures"]) if resume and paths["failures"].exists() else []
+    failures = read_jsonl(paths["failures"]) if resume else []
+
+    def source_sink(stage: str, artifact: dict[str, Any]) -> None:
+        append_jsonl(paths[stage], artifact)
+
     for sample in samples:
         sample_id = str(sample["sample_id"])
         if sample_id in cards:
             continue
         try:
-            card = build_source_card(sample, primary_client)
+            card, _ = build_source_card(sample, client, source_sink)
             cards[sample_id] = card
-            append_jsonl(paths["cards"], card)
         except Exception as exc:
-            failure = {"stage": "source_card", "sample_id": sample_id, "error": str(exc)}
+            failure = {"stage": "source", "sample_id": sample_id, "error": str(exc)}
             failures.append(failure)
             append_jsonl(paths["failures"], failure)
 
-    results = read_jsonl(paths["partial"]) if resume and paths["partial"].exists() else []
-    completed = {(str(item["sample_id"]), str(item["system_name"])) for item in results}
+    results = read_jsonl(paths["score_06_final_results"]) if resume else []
+    completed = {(str(row["sample_id"]), str(row["system_name"])) for row in results}
+
+    def target_sink(stage: str, artifact: dict[str, Any]) -> None:
+        append_jsonl(paths[stage], artifact)
+
     for output in outputs:
-        sample_id = str(output["sample_id"])
-        system_name = str(output.get("system_name") or "system")
-        key = (sample_id, system_name)
+        key = (str(output["sample_id"]), str(output["system_name"]))
         if key in completed:
             continue
-        if sample_id not in cards:
-            failure = {"stage": "evaluation", "sample_id": sample_id, "system_name": system_name, "error": "No validated source card"}
+        card = cards.get(key[0])
+        if card is None:
+            failure = {
+                "stage": "target",
+                "sample_id": key[0],
+                "system_name": key[1],
+                "error": "No validated source_card",
+            }
             failures.append(failure)
             append_jsonl(paths["failures"], failure)
             continue
         try:
-            evaluated = evaluate_translation(
-                cards[sample_id],
-                system_name,
-                str(output.get("si_translation") or ""),
-                primary_client,
-                review_client,
-            )
-            result = score_evaluation(evaluated)
-            for field in ("expected_label", "expected_errors", "label_notes"):
-                if field in output:
-                    result[field] = output[field]
+            result, _ = evaluate_system(card, output, client, target_sink)
             results.append(result)
             completed.add(key)
-            append_jsonl(paths["partial"], result)
         except Exception as exc:
-            failure = {"stage": "evaluation", "sample_id": sample_id, "system_name": system_name, "error": str(exc)}
+            failure = {
+                "stage": "target_or_score",
+                "sample_id": key[0],
+                "system_name": key[1],
+                "error": str(exc),
+            }
             failures.append(failure)
             append_jsonl(paths["failures"], failure)
 
-    results.sort(key=lambda item: (str(item["sample_id"]), str(item["system_name"])))
-    write_jsonl(paths["results"], results)
+    results.sort(key=lambda row: (str(row["sample_id"]), str(row["system_name"])))
+    write_jsonl(paths["score_06_final_results"], results)
     metrics = compute_metrics(results, failures)
     metrics["paths"] = {key: str(path) for key, path in paths.items()}
     write_json(paths["metrics"], metrics)
@@ -118,26 +152,26 @@ def run_pipeline(
     return metrics
 
 
-def compute_metrics(results: list[dict[str, Any]], failures: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+def compute_metrics(
+    results: list[dict[str, Any]], failures: list[dict[str, Any]] | None = None
+) -> dict[str, Any]:
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for result in results:
         grouped[str(result["system_name"])].append(result)
     systems = {}
     for system_name, rows in sorted(grouped.items()):
-        dimensions = {}
-        for dimension in DIMENSION_WEIGHTS:
-            values = [row.get("dimension_scores", {}).get(dimension, {}).get("score") for row in rows]
-            numeric = [float(value) for value in values if isinstance(value, (int, float))]
-            dimensions[dimension] = _mean(numeric) if numeric else None
         systems[system_name] = {
             "samples": len(rows),
             "average_score": _mean([float(row["final_score"]) for row in rows]),
-            "dimension_average_points": dimensions,
-            "confirmed_errors": sum(len(row.get("attributed_errors", [])) for row in rows),
-            "pending_reviews": sum(len(row.get("review_queue", [])) for row in rows),
+            "dimension_scores": {
+                dimension: _mean(
+                    [float(row["dimension_scores"][dimension]) for row in rows]
+                )
+                for dimension in DIMENSIONS
+            },
         }
     return {
-        "version": PIPELINE_VERSION,
+        "protocol_version": PROTOCOL_VERSION,
         "num_results": len(results),
         "num_failures": len(failures or []),
         "average_score": _mean([float(row["final_score"]) for row in results]),
@@ -145,43 +179,88 @@ def compute_metrics(results: list[dict[str, Any]], failures: list[dict[str, Any]
     }
 
 
-def _manifest(samples_path: str, outputs_path: str, primary: LLMClient, review: LLMClient) -> dict[str, Any]:
+def _normalize_sample(row: dict[str, Any]) -> dict[str, Any]:
     return {
-        "pipeline_version": PIPELINE_VERSION,
+        "sample_id": str(row.get("sample_id") or row.get("vid") or "").strip(),
+        "source_text": str(row.get("source_text") or row.get("transcript") or ""),
+        "reference_translation": row.get("reference_translation", row.get("offline_translation")),
+        "src_lang": str(row.get("src_lang") or "unspecified"),
+        "tgt_lang": str(row.get("tgt_lang") or "unspecified"),
+        "domain": str(row.get("domain") or "unspecified"),
+    }
+
+
+def _normalize_output(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "sample_id": str(row.get("sample_id") or row.get("vid") or "").strip(),
+        "system_name": str(row.get("system_name") or "").strip(),
+        "si_translation": str(row.get("si_translation") or ""),
+    }
+
+
+def _validate_inputs(samples: list[dict[str, Any]], outputs: list[dict[str, Any]]) -> None:
+    sample_ids = [row["sample_id"] for row in samples]
+    if any(not value for value in sample_ids) or len(sample_ids) != len(set(sample_ids)):
+        raise ValueError("samples must have unique non-empty sample_id values")
+    for row in samples:
+        if not row["source_text"].strip():
+            raise ValueError(f"sample {row['sample_id']} has empty source_text")
+    valid_ids = set(sample_ids)
+    output_keys = []
+    for row in outputs:
+        if row["sample_id"] not in valid_ids:
+            raise ValueError(f"output references unknown sample_id={row['sample_id']}")
+        if not row["system_name"] or not row["si_translation"].strip():
+            raise ValueError("every output needs system_name and si_translation")
+        output_keys.append((row["sample_id"], row["system_name"]))
+    if len(output_keys) != len(set(output_keys)):
+        raise ValueError("outputs must have unique (sample_id, system_name) pairs")
+
+
+def _select_rows(
+    samples: list[dict[str, Any]], outputs: list[dict[str, Any]], sample_ids: list[str] | None,
+    system_names: list[str] | None, limit_samples: int | None, limit_outputs: int | None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    selected_samples = [
+        row for row in samples if sample_ids is None or row["sample_id"] in set(sample_ids)
+    ]
+    if limit_samples is not None:
+        selected_samples = selected_samples[:limit_samples]
+    selected_ids = {row["sample_id"] for row in selected_samples}
+    selected_outputs = [
+        row for row in outputs
+        if row["sample_id"] in selected_ids
+        and (system_names is None or row["system_name"] in set(system_names))
+    ]
+    if limit_outputs is not None:
+        selected_outputs = selected_outputs[:limit_outputs]
+    required_ids = {row["sample_id"] for row in selected_outputs}
+    selected_samples = [row for row in selected_samples if row["sample_id"] in required_ids]
+    if not selected_samples or not selected_outputs:
+        raise ValueError("selection produced no sample/output pairs")
+    return selected_samples, selected_outputs
+
+
+def _manifest(
+    samples_path: str, outputs_path: str, samples: list[dict[str, Any]],
+    outputs: list[dict[str, Any]], client: LLMClient,
+) -> dict[str, Any]:
+    return {
+        "protocol_version": PROTOCOL_VERSION,
         "samples_sha256": _file_hash(samples_path),
         "outputs_sha256": _file_hash(outputs_path),
+        "selected_sample_ids": [row["sample_id"] for row in samples],
+        "selected_output_keys": [[row["sample_id"], row["system_name"]] for row in outputs],
         "prompt_hashes": prompt_manifest(),
-        "dimension_weights": DIMENSION_WEIGHTS,
-        "primary_provider": primary.provider_name,
-        "primary_model": primary.model_name,
-        "review_provider": review.provider_name,
-        "review_model": review.model_name,
+        "provider": client.provider_name,
+        "model": client.model_name,
     }
 
 
 def _assert_resume_compatible(existing: dict[str, Any], current: dict[str, Any]) -> None:
-    keys = ("pipeline_version", "samples_sha256", "outputs_sha256", "prompt_hashes", "dimension_weights", "primary_provider", "primary_model", "review_provider", "review_model")
-    changed = [key for key in keys if existing.get(key) != current.get(key)]
+    changed = [key for key, value in current.items() if existing.get(key) != value]
     if changed:
-        raise ValueError("Cannot resume because run inputs or configuration changed: " + ", ".join(changed))
-
-
-def _validate_inputs(samples: list[dict[str, Any]], outputs: list[dict[str, Any]]) -> None:
-    sample_ids = [str(item.get("sample_id") or "") for item in samples]
-    if any(not item for item in sample_ids) or len(sample_ids) != len(set(sample_ids)):
-        raise ValueError("samples must contain unique non-empty sample_id values")
-    valid_ids = set(sample_ids)
-    output_keys = []
-    for item in outputs:
-        sample_id = str(item.get("sample_id") or "")
-        system_name = str(item.get("system_name") or "")
-        if sample_id not in valid_ids:
-            raise ValueError(f"output references unknown sample_id={sample_id}")
-        if not system_name or not str(item.get("si_translation") or "").strip():
-            raise ValueError("every output needs system_name and si_translation")
-        output_keys.append((sample_id, system_name))
-    if len(output_keys) != len(set(output_keys)):
-        raise ValueError("outputs must contain unique (sample_id, system_name) pairs")
+        raise ValueError("Cannot resume because run configuration changed: " + ", ".join(changed))
 
 
 def _file_hash(path: str) -> str:

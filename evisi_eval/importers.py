@@ -38,17 +38,16 @@ def convert_wide_rows(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]],
         sample_id = row.get("vid") or row.get("sample_id")
         if not sample_id:
             raise ValueError("Each row must include vid or sample_id")
-        transcript = row.get("transcript")
-        if not transcript:
-            raise ValueError(f"Row {sample_id} is missing transcript")
+        source_text = row.get("source_text") or row.get("transcript")
+        if not source_text:
+            raise ValueError(f"Row {sample_id} is missing source_text/transcript")
         sample = {
             "sample_id": sample_id,
-            "transcript": transcript,
-            "offline_translation": row.get("translation"),
+            "source_text": source_text,
+            "reference_translation": row.get("reference_translation", row.get("translation")),
             "domain": _infer_domain(sample_id),
             "src_lang": _infer_src_lang(sample_id),
             "tgt_lang": _infer_tgt_lang(sample_id),
-            "source_format": "wide_system_transcript",
         }
         samples.append(sample)
 
@@ -61,9 +60,6 @@ def convert_wide_rows(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]],
                 "system_name": system_name,
                 "si_translation": value,
             }
-            asr = row.get(f"{system_name}_asr")
-            if asr:
-                output["system_asr"] = asr
             outputs.append(output)
     return samples, outputs
 
@@ -105,4 +101,3 @@ def _infer_tgt_lang(sample_id: str) -> str:
     if "2" in prefix:
         return prefix.split("2", 1)[1] or "unspecified"
     return "unspecified"
-

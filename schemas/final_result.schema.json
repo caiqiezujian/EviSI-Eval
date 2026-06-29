@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/evisi/final-result-v0.3.schema.json",
+  "title": "EviSI-Eval v0.3 Final Result",
+  "type": "object",
+  "required": ["sample_id", "system_name", "source_text", "si_translation", "source_units", "eval_units", "source_anchors", "target_anchors", "source_events", "target_events", "source_relations", "target_relations", "anchor_judgements", "event_judgements", "relation_judgements", "global_fidelity_review", "dimension_scores", "dimension_score_explanations", "dimension_weights", "final_score", "score_summary", "metadata"],
+  "properties": {
+    "sample_id": {"type": "string", "minLength": 1},
+    "system_name": {"type": "string", "minLength": 1},
+    "dimension_scores": {"$ref": "#/$defs/dimensions"},
+    "dimension_weights": {"$ref": "#/$defs/dimensions"},
+    "final_score": {"type": "number", "minimum": 0, "maximum": 100},
+    "score_summary": {
+      "type": "object",
+      "required": ["overall_judgement", "main_strengths", "main_errors", "uncertain_points"]
+    },
+    "metadata": {"type": "object", "required": ["protocol_version", "agent_trace", "prompt_hashes"]}
+  },
+  "$defs": {
+    "dimensions": {
+      "type": "object",
+      "required": ["anchor_fidelity", "event_fidelity", "relation_fidelity", "fluency", "si_expression"],
+      "properties": {
+        "anchor_fidelity": {"type": "number"},
+        "event_fidelity": {"type": "number"},
+        "relation_fidelity": {"type": "number"},
+        "fluency": {"type": "number"},
+        "si_expression": {"type": "number"}
+      }
+    }
+  }
+}

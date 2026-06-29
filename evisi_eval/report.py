@@ -5,54 +5,83 @@ from pathlib import Path
 from typing import Any
 
 
-DIMENSION_NAMES = {
-    "anchor_accuracy": "事实锚点准确性",
-    "event_preservation": "事件语义保持",
-    "relation_preservation": "逻辑关系保持",
-    "target_fluency": "流利度与可理解性",
-    "expression_efficiency": "表达效率与简洁性",
+DIMENSION_LABELS = {
+    "anchor_fidelity": "Anchor 忠实度",
+    "event_fidelity": "Event 忠实度",
+    "relation_fidelity": "Relation 忠实度",
+    "fluency": "流利度",
+    "si_expression": "同传表达",
 }
 
 
 def export_html_report(
     results: list[dict[str, Any]], metrics: dict[str, Any], output_path: str | Path
 ) -> None:
-    sections = []
-    for result in results:
-        sentence_rows = "".join(
-            f"<tr><td>{_e(item.get('source_sentence_id'))}</td><td>{_e(item.get('source_sentence_text'))}</td><td>{_e(' | '.join(item.get('target_spans', [])))}</td><td>{_e(item.get('alignment_type'))}</td><td>{_e(item.get('confidence'))}</td></tr>"
-            for item in result.get("sentence_alignment", {}).get("sentence_alignments", [])
-        ) or '<tr><td colspan="5">无句级对齐结果</td></tr>'
-        dimension_rows = "".join(
-            f"<tr><td>{_e(DIMENSION_NAMES.get(key, key))}</td><td>{_e(value.get('score'))}</td><td>{_e(value.get('max_points'))}</td><td>{_e(value.get('error_count'))}</td></tr>"
-            for key, value in result.get("dimension_scores", {}).items()
-        )
-        error_rows = "".join(
-            f"<tr><td>{_e(DIMENSION_NAMES.get(item.get('dimension'), item.get('dimension')))}</td><td>{_e(item.get('item_id'))}</td><td>{_e(item.get('verdict'))}</td><td>{_e(item.get('source_evidence'))}</td><td>{_e(item.get('target_evidence'))}</td><td>{_e(item.get('deduction'))}</td></tr>"
-            for item in result.get("attributed_errors", [])
-        ) or '<tr><td colspan="6">无已确认错误</td></tr>'
-        sections.append(
-            f"""
-            <section>
-              <h2>{_e(result.get('sample_id'))} · {_e(result.get('system_name'))}</h2>
-              <p class="score">总分 {_e(result.get('final_score'))}</p>
-              <div class="texts"><div><h3>原文</h3><p>{_e(result.get('source_text'))}</p></div><div><h3>同传译文</h3><p>{_e(result.get('si_translation'))}</p></div></div>
-              <h3>源句—译文单元对齐</h3><table><thead><tr><th>源句</th><th>源文</th><th>译文单元</th><th>类型</th><th>置信度</th></tr></thead><tbody>{sentence_rows}</tbody></table>
-              <h3>维度得分</h3><table><thead><tr><th>维度</th><th>得分</th><th>满分</th><th>错误数</th></tr></thead><tbody>{dimension_rows}</tbody></table>
-              <h3>证据化错误</h3><table><thead><tr><th>维度</th><th>项目</th><th>判定</th><th>源文证据</th><th>译文证据</th><th>扣分</th></tr></thead><tbody>{error_rows}</tbody></table>
-            </section>
-            """
-        )
-    systems = "".join(
-        f"<tr><td>{_e(name)}</td><td>{_e(value.get('samples'))}</td><td>{_e(value.get('average_score'))}</td><td>{_e(value.get('confirmed_errors'))}</td><td>{_e(value.get('pending_reviews'))}</td></tr>"
-        for name, value in metrics.get("systems", {}).items()
+    system_rows = "".join(
+        f"<tr><td>{_e(name)}</td><td>{_e(row['samples'])}</td><td>{_e(row['average_score'])}</td>"
+        + "".join(f"<td>{_e(row['dimension_scores'][key])}</td>" for key in DIMENSION_LABELS)
+        + "</tr>"
+        for name, row in metrics.get("systems", {}).items()
     )
-    document = f"""<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EviSI-Eval 评测报告</title><style>
-    body{{font-family:Arial,"Microsoft YaHei",sans-serif;margin:0;background:#f5f6f7;color:#202428}}main{{max-width:1280px;margin:auto;padding:28px}}header,section{{background:#fff;border:1px solid #dfe3e6;border-radius:6px;padding:22px;margin-bottom:18px}}h1,h2,h3{{margin-top:0}}table{{width:100%;border-collapse:collapse;margin-bottom:18px}}th,td{{border:1px solid #dfe3e6;padding:8px;text-align:left;vertical-align:top}}th{{background:#f0f2f3}}.texts{{display:grid;grid-template-columns:1fr 1fr;gap:18px}}.texts p{{white-space:pre-wrap;line-height:1.6}}.score{{font-size:24px;font-weight:700}}@media(max-width:800px){{.texts{{grid-template-columns:1fr}}main{{padding:12px}}}}
-    </style></head><body><main><header><h1>EviSI-Eval 同传最终译文评测报告</h1><p>结果数：{_e(metrics.get('num_results'))}　失败数：{_e(metrics.get('num_failures'))}　总体均分：{_e(metrics.get('average_score'))}</p><table><thead><tr><th>系统</th><th>样本数</th><th>平均分</th><th>已确认错误</th><th>待复核</th></tr></thead><tbody>{systems}</tbody></table></header>{''.join(sections)}</main></body></html>"""
+    sections = "".join(_result_section(result) for result in results)
+    dimension_headers = "".join(f"<th>{label}</th>" for label in DIMENSION_LABELS.values())
+    document = f"""<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>EviSI-Eval v0.3 评测报告</title><style>
+body{{font-family:Arial,"Microsoft YaHei",sans-serif;margin:0;background:#f4f5f6;color:#202428}}
+main{{max-width:1320px;margin:auto;padding:24px}}header,section{{background:#fff;border:1px solid #d9dee2;border-radius:6px;padding:20px;margin-bottom:16px}}
+h1,h2,h3{{margin:0 0 12px}}p{{line-height:1.6}}.score{{font-size:28px;font-weight:700}}.grid{{display:grid;grid-template-columns:1fr 1fr;gap:16px}}
+table{{width:100%;border-collapse:collapse;margin:10px 0 18px}}th,td{{border:1px solid #d9dee2;padding:8px;vertical-align:top;text-align:left}}th{{background:#eef1f3}}
+.text{{white-space:pre-wrap}}.muted{{color:#5e6870}}@media(max-width:800px){{.grid{{grid-template-columns:1fr}}main{{padding:10px}}}}
+</style></head><body><main><header><h1>EviSI-Eval v0.3 同传最终译文评测报告</h1>
+<p>结果数：{_e(metrics.get('num_results'))}　失败数：{_e(metrics.get('num_failures'))}　平均分：{_e(metrics.get('average_score'))}</p>
+<table><thead><tr><th>系统</th><th>样本数</th><th>总分</th>{dimension_headers}</tr></thead><tbody>{system_rows}</tbody></table></header>{sections}</main></body></html>"""
     target = Path(output_path)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(document, encoding="utf-8")
+
+
+def _result_section(result: dict[str, Any]) -> str:
+    score_rows = "".join(
+        f"<tr><td>{_e(DIMENSION_LABELS[key])}</td><td>{_e(result['dimension_scores'][key])}</td><td>{_e(result['dimension_weights'][key])}%</td><td>{_e(result['dimension_score_explanations'][key])}</td></tr>"
+        for key in DIMENSION_LABELS
+    )
+    eval_rows = "".join(
+        f"<tr><td>{_e(row.get('eval_unit_id'))}</td><td>{_e(', '.join(row.get('source_unit_ids', [])))}</td><td class='text'>{_e(row.get('target_unit'))}</td><td>{_e(row.get('alignment_status'))}</td><td>{_e(row.get('reason'))}</td></tr>"
+        for row in result.get("eval_units", [])
+    )
+    judgement_rows = "".join(
+        _judgement_rows(result.get(key, []), kind)
+        for key, kind in (
+            ("anchor_judgements", "Anchor"),
+            ("event_judgements", "Event"),
+            ("relation_judgements", "Relation"),
+        )
+    ) or "<tr><td colspan='6'>无内容 judgement</td></tr>"
+    issue_rows = "".join(
+        f"<tr><td>{kind}</td><td>{_e(row.get('issue_id'))}</td><td>{_e(row.get('target_span'))}</td><td>{_e(row.get('severity'))}</td><td>{_e(row.get('issue_description'))}</td></tr>"
+        for key, kind in (("fluency_issues", "Fluency"), ("si_expression_issues", "SI Expression"))
+        for row in result.get(key, [])
+    ) or "<tr><td colspan='5'>无表达类问题</td></tr>"
+    summary = result.get("score_summary", {})
+    return f"""<section><h2>{_e(result.get('sample_id'))} · {_e(result.get('system_name'))}</h2>
+<p class="score">{_e(result.get('final_score'))}</p>
+<div class="grid"><div><h3>源文</h3><p class="text">{_e(result.get('source_text'))}</p></div><div><h3>同传译文</h3><p class="text">{_e(result.get('si_translation'))}</p></div></div>
+<h3>五维得分</h3><table><thead><tr><th>维度</th><th>分数</th><th>权重</th><th>证据说明</th></tr></thead><tbody>{score_rows}</tbody></table>
+<h3>Eval Units</h3><table><thead><tr><th>ID</th><th>源单元</th><th>译文片段</th><th>状态</th><th>理由</th></tr></thead><tbody>{eval_rows}</tbody></table>
+<h3>内容忠实度 Judgements</h3><table><thead><tr><th>维度</th><th>源项目</th><th>源内容</th><th>译文匹配</th><th>判定</th><th>说明</th></tr></thead><tbody>{judgement_rows}</tbody></table>
+<h3>表达问题</h3><table><thead><tr><th>维度</th><th>ID</th><th>译文证据</th><th>严重度</th><th>说明</th></tr></thead><tbody>{issue_rows}</tbody></table>
+<h3>总结</h3><p>{_e(summary.get('overall_judgement'))}</p><p class="muted">优势：{_e('；'.join(summary.get('main_strengths', [])))}<br>问题：{_e('；'.join(summary.get('main_errors', [])))}<br>不确定：{_e('；'.join(summary.get('uncertain_points', [])))}</p></section>"""
+
+
+def _judgement_rows(rows: list[dict[str, Any]], kind: str) -> str:
+    prefix = kind.lower()
+    source_id_key = f"source_{prefix}_id"
+    source_text_key = f"source_{prefix}"
+    return "".join(
+        f"<tr><td>{kind}</td><td>{_e(row.get(source_id_key))}</td><td>{_e(row.get(source_text_key))}</td><td>{_e(row.get('target_match'))}</td><td>{_e(row.get('verdict'))}</td><td>{_e(row.get('explanation'))}</td></tr>"
+        for row in rows
+    )
 
 
 def _e(value: Any) -> str:

@@ -1,0 +1,1096 @@
+===== PAGE 1 =====
+EviSI-Eval Agent 需求与实施方案 v0.1
+1. 项目定位
+EviSI-Eval Agent 是一个面向同声传译最终译文的自动化质量评估 Agent。EviSI-Eval 是 Evidence-driven
+Simultaneous Interpretation Evaluation 的缩写，即“证据驱动的同声传译评估”。
+本系统的目标是评价同传系统最终输出的译文质量，而不是评价同传系统的实时中间过程。输入是一段源语转
+录文本和一个同传系统的最终译文，系统通过大模型完成切分对齐、关键 anchor 抽取、事件抽取、逻辑关系抽
+取、表达质量评判、内容忠实度评判和最终打分。
+当前版本只评估最终文本，不评估音频质量、ASR 质量、真实延迟、partial revision、字幕稳定性、增量输出
+过程或语音播报效果。
+系统的核心目标是回答一个问题：听众通过这段同传译文，是否获得了与源文一致、足够完整、清楚自然、符
+合同传表达特点的信息。
+2. 总体原则
+本系统是大模型驱动的评估 Agent，不是硬编码规则评分器。
+所有核心语义判断由大模型完成，包括原文与译文切分、anchor 抽取、event 抽取、relation 抽取、源译对应
+判断、表达问题判断和维度评分。
+代码层只负责流程编排、Prompt 调用、JSONL 读写、字段合并、失败重试、格式校验、无损切分校验、日志
+记录和报告生成。代码不负责判断翻译是否正确，也不负责用字符串规则判定 anchor、event 或 relation 是否
+匹配。
+为了让大模型评估尽量客观，系统必须采用结构化流程。不能让大模型直接读取原文和译文后自由给一个总
+分。必须先生成可审查的中间结果，再基于这些中间结果进行评分。
+评估过程中可以使用真实译文或离线译文作为参考，但参考译文只能辅助理解源文大意、术语表达和句子边
+界，不能作为判断同传译文正确与否的证据。最终评估依据必须是源文和同传译文。
+3. 输入数据
+每条样本至少包含：
+{
+"sample_id":"样本ID",
+"source_text":"源语转录文本",
+"si_translation":"同传系统最终译文",
+"reference_translation":"可选真实译文或离线译文，可以为 null",
+"src_lang":"源语言",
+"tgt_lang":"目标语言",
+"domain":"领域，可选",
+1
+===== PAGE 2 =====
+"system_name":"系统名称，可选"
+}
+其中 source_text 是唯一事实依据。 si_translation 是待测同传译文。 reference_translation 是辅助信
+息，不参与直接判错。
+如果需要比较多个系统，则每个系统输出单独作为一行 JSONL，使用相同的 sample_id 和不同的
+system_name 。
+4. 输出数据
+最终输出每条样本和每个系统的一份完整评估结果：
+{
+"sample_id":"样本ID",
+"system_name":"系统名称",
+"dimension_scores":{
+"anchor_fidelity":0,
+"event_fidelity":0,
+"relation_fidelity":0,
+"fluency":0,
+"si_expression":0
+},
+"dimension_weights":{
+"anchor_fidelity":30,
+"event_fidelity":25,
+"relation_fidelity":20,
+"fluency":15,
+"si_expression":10
+},
+"final_score":0,
+"score_summary":{
+"overall_judgement":"",
+"main_strengths":[],
+"main_errors":[],
+"uncertain_points":[]
+}
+}
+除最终分数外，系统还必须保存完整中间字段，包括切分对齐结果、原文 anchor、译文 anchor、原文
+event、译文 event、原文 relation、译文 relation、fluency 问题、SI expression 问题、anchor 判断、event
+判断、relation 判断和全文复核结果。
+5. 评估维度与权重
+最终评分采用五个维度，总分 100 分。
+2
+===== PAGE 3 =====
+5.1 Anchor Fidelity，30 分
+评估源文中的关键 anchor 是否在同传译文中被准确传达。
+这里的 anchor 不等于传统 NER 实体，而是“关键可核验信息锚点”。它包括人名、机构、地点、时间、数
+量、金额、比例、术语、项目名称、政策名称、对象范围、限定对象等。
+例如：“25万美元”中的 25万 或 25万美元 是 anchor；“上升”不是 anchor，而是 event 中的变化方向。
+anchor 只负责可独立核验的信息锚点，不负责动作、变化、态度或逻辑关系。
+5.2 Event Fidelity，25 分
+评估源文中的核心事件语义是否被同传译文准确保留。
+event 关注“谁做了什么”“什么发生了变化”“谁对谁产生影响”“某人表达了什么判断或态度”“某状态
+是否成立”等语义结构。
+event 包括主体、动作、状态、变化方向、判断、态度、否定、情态、主客体关系、施事受事关系和范围边界
+等。
+5.3 Relation Fidelity，20 分
+评估源文中的逻辑关系是否被同传译文准确保留。
+relation 关注事件之间或命题之间的关系，包括因果、条件、转折、让步、目的、时序、比较、归因、解释、
+例外、递进等。
+relation 依赖 event 抽取结果。只有先知道两边各自有哪些事件，才能判断事件之间的关系是否保留。
+5.4 Fluency，15 分
+评估完整同传译文本身是否清楚、自然、可理解。
+fluency 只看完整 si_translation ，不按切分单元逐句评估，也不看源文。因为流利度是目标语整体听感和可
+理解性问题。单句局部不完整不一定影响整体理解，单句看似通顺也不代表整段自然清楚。
+fluency 评估内容包括语法是否混乱、表达是否自然、句子是否可理解、是否存在源语残留、指代是否清楚、目
+标语搭配是否异常、整体是否影响听众理解。
+5.5 SI Expression，10 分
+评估完整同传译文是否符合同传表达要求。
+SI expression 关注同传译文作为实时口译结果是否简洁、顺畅、有效，是否存在无意义重复、过度填充、拖
+沓、反复改述、无必要解释、明显不必要添加等问题。
+SI expression 可以看完整 source_text 和完整 si_translation ，但它不负责判断核心内容是否忠实。内容
+忠实度由 anchor、event 和 relation 三个维度判断。SI expression 主要判断表达方式和同传输出形态。
+3
+===== PAGE 4 =====
+6. 总体流程
+完整流程如下：
+1. 句子/句组级一对一切分对齐
+2. 原文 anchor 抽取
+3. 译文 anchor 抽取
+4. 原文 event 抽取
+5. 译文 event 抽取
+6. 原文 relation 抽取
+7. 译文 relation 抽取
+8. 整体 fluency 评判
+9. 整体 SI expression 评判
+10. anchor 内容忠实度评判
+11. event 内容忠实度评判
+12. relation 内容忠实度评判
+13. 内容忠实度全文复核
+14. 五维分数计算
+15. 总分计算与总结
+其中第 1 步是建立局部比较范围。第 2 到第 7 步是结构化语义抽取。第 8 和第 9 步是译文表达质量评判。第 10
+到第 12 步是内容忠实度评判。第 13 步是全文复核。第 14 和第 15 步是评分与报告生成。
+内容忠实度采用“切分后的对齐单元为主，全文复核为辅”的原则。也就是说，anchor、event、relation 的基
+础判断在 aligned_unit 内完成，但最终还要做全文级复核，检查跨单元补偿、术语一致性、延迟表达、重复
+错误和局部判断冲突。
+7. JSONL 滚动实施方式
+系统采用滚动补全 JSONL 的方式实施。每一步读取上一步 JSONL，新增字段后写入新的 JSONL。每一行始终
+代表同一个样本和同一个系统，只是字段逐步增加。
+推荐中间文件如下：
+00_input.jsonl
+01_aligned.jsonl
+02_source_anchors.jsonl
+03_target_anchors.jsonl
+04_source_events.jsonl
+05_target_events.jsonl
+06_source_relations.jsonl
+4
+===== PAGE 5 =====
+07_target_relations.jsonl
+08_fluency.jsonl
+09_si_expression.jsonl
+10_anchor_judgements.jsonl
+11_event_judgements.jsonl
+12_relation_judgements.jsonl
+13_global_review.jsonl
+14_dimension_scores.jsonl
+15_final_results.jsonl
+每一步只新增自己的字段，不删除前面字段。这样方便断点续跑、人工审查和错误定位。
+到第 15 步时，每行数据大致结构为：
+{
+"sample_id":"s1",
+"system_name":"system_a",
+"source_text":"...",
+"si_translation":"...",
+"reference_translation":"...",
+"src_lang":"en",
+"tgt_lang":"zh",
+"aligned_units":[],
+"source_anchors":[],
+"target_anchors":[],
+"source_events":[],
+"target_events":[],
+"source_relations":[],
+"target_relations":[],
+"fluency_issues":[],
+"si_expression_issues":[],
+"anchor_judgements":[],
+"event_judgements":[],
+"relation_judgements":[],
+"global_fidelity_review":{},
+"dimension_scores":{},
+"final_score":0,
+"score_summary":{}
+}
+5
+===== PAGE 6 =====
+8. Step 1：句子/句组级一对一切分对齐
+8.1 目标
+将 source_text 和 si_translation 切分并对齐为一组一对一评估单元。每个单元包含一个源文句子或相邻
+源文句组，以及一个译文句子或相邻译文句组。
+第一步不做句内细切分，不抽 anchor，不抽 event，不判断译文对错，不打分。
+8.2 关键原则
+默认按句子切分。句子内部的定语从句、倒装结构、插入语、后置修饰、长宾语、状语、补语等不拆开。
+必要时合并相邻句子为句组。如果原文 A、B 两个相邻句子在译文中表现为 B′、A′，则输出一个单元：
+source_unit = A+B ， target_unit = B′+A′ 。不要强行输出 A 对 B′、B 对 A′。
+翻错仍然对齐。源文说“增长 15%”，译文说“下降 50%”，仍然对齐为同一单元，后续步骤再判断错误。
+切分必须无损。所有 source_unit 按输出顺序拼接后，必须等于输入的 source_text 。所有 target_unit
+按输出顺序拼接后，必须等于输入的 si_translation 。
+8.3 输出字段
+{
+"aligned_units":[
+{
+"unit_id":"U1",
+"source_unit":"源文句子或相邻源文句组，可以为空",
+"target_unit":"译文句子或相邻译文句组，可以为空",
+"alignment_status":"aligned | source_omitted | target_addition | uncertain",
+"reason":"简要说明切分对齐原因"
+}
+]
+}
+8.4 Prompt
+你是同声传译质量评估 Agent 的“句子/句组级切分对齐器”。
+你的任务是读取源文和同传译文，将二者切分并对齐为一组一对一的评估单元。每个评估单元包含一个源
+文句子或相邻源文句组 source_unit，以及一个译文句子或相邻译文句组 target_unit。
+你只负责切分和对齐，不抽取 anchor，不抽取事件，不判断译文对错，不打分。
+输入字段包括：
+sample_id
+source_text
+si_translation
+6
+===== PAGE 7 =====
+reference_translation
+src_lang
+tgt_lang
+reference_translation 只能辅助理解源文大意、术语表达和可能的句子边界。不得把
+reference_translation 作为判断同传译文正确与否的证据。不得根据 reference_translation 补全、改
+写或修正 si_translation。
+切分原则：
+1. 默认按句子切分。第一步的基本粒度是句子，不是句子内部的短语、从句、修饰结构或语义成分。
+2. 不要把一句话内部的定语从句、倒装结构、插入语、后置修饰、长宾语、状语、补语等拆成独立评估单
+元。
+3. 如果严格按句子一对一会导致明显错误，可以将相邻源文句子合并为一个 source_unit，或将相邻译文
+句子合并为一个 target_unit。
+4. 如果源文 A、B 两个相邻句子在译文中表现为 B′、A′，应输出一个合并单元 source_unit = A+B，
+target_unit = B′+A′。不要强行输出 A 对 B′、B 对 A′。
+5. 如果译文片段明显是在表达某个源文句子，即使内容翻错，也应标为 aligned。内容错误由后续评估步
+骤判断。
+6. 如果某个源文句子或源文句组在译文中没有任何实质对应表达，则输出 source_omitted，并令
+target_unit 为空字符串。
+7. 如果译文中存在没有源文依据的独立句子或独立片段，则输出 target_addition，并令 source_unit
+为空字符串。
+8. 如果无依据添加嵌入在某个译文句子内部，不要在第一步强行切开；保留在对应 target_unit 中，后
+续评估步骤再判断。
+9. 切分不得省略、改写、纠错、清理或补全任何原文和译文内容。
+10. 所有 source_unit 按输出顺序拼接后，必须等于输入的 source_text。
+11. 所有 target_unit 按输出顺序拼接后，必须等于输入的 si_translation。
+12. 如果原文句子和译文句子可以稳定对应，就不要合并。不要把整段原文和整段译文直接合成一个大单
+元，除非整段极短且确实无法拆分。
+alignment_status 只能取：
+aligned
+source_omitted
+target_addition
+uncertain
+只输出 JSON 对象，不输出解释性文字。输出格式如下：
+{
+"sample_id": "string",
+"aligned_units": [
+{
+"unit_id": "U1",
+"source_unit": "verbatim source sentence or adjacent source sentence group",
+"target_unit": "verbatim target sentence or adjacent target sentence group",
+"alignment_status": "aligned",
+"reason": "brief reason"
+}
+]
+}
+7
+===== PAGE 8 =====
+9. Step 2 和 Step 3：Anchor 抽取
+9.1 设计方式
+Anchor 抽取使用同一个 Prompt 模板，调用两次。
+第一次调用时 side = source ，只读取 source_unit ，输出 source_anchors 。
+第二次调用时 side = target ，只读取 target_unit ，输出 target_anchors 。
+源文 anchor 抽取和译文 anchor 抽取必须独立。抽源文 anchor 时不能看 target_unit 。抽译文 anchor 时不
+能看 source_unit 。抽取阶段不判断对错，不比较原文和译文。
+9.2 Anchor 定义
+Anchor 是关键可核验信息锚点，不等于传统实体。Anchor 包括但不限于：
+人名、机构、国家、城市、地点、时间、日期、年份、数量、金额、比例、百分比、度量单位、产品名、项目
+名、政策名、文件名、专业术语、限定对象、明确指称的群体或对象。
+Anchor 不负责抽动作、变化方向、因果、条件、态度、判断、否定、情态和逻辑关系。这些内容由 event 或
+relation 阶段处理。
+但 Prompt 中不需要写“这个交给 event 抽取”。Anchor Prompt 只需要正面说明自己抽什么，不需要引用
+event 的职责。
+9.3 输出字段
+{
+"source_anchors":[
+{
+"unit_id":"U1",
+"anchor_id":"SA1",
+"anchor_text":"原文 anchor 表面文本",
+"normalized_meaning":"规范化含义",
+"evidence_span":"原文中的逐字证据"
+}
+]
+}
+或：
+{
+"target_anchors":[
+{
+"unit_id":"U1",
+"anchor_id":"TA1",
+"anchor_text":"译文 anchor 表面文本",
+8
+===== PAGE 9 =====
+"normalized_meaning":"规范化含义",
+"evidence_span":"译文中的逐字证据"
+}
+]
+}
+9.4 Prompt
+你是同声传译质量评估 Agent 的 anchor 抽取器。
+你的任务是从输入文本单元中抽取关键可核验信息锚点。你只做抽取，不做源译比较，不判断译文是否正
+确，不打分。
+本次处理侧为：{side}
+如果 side = source，你只能读取每个 aligned_unit 的 source_unit，并输出 source_anchors。
+如果 side = target，你只能读取每个 aligned_unit 的 target_unit，并输出 target_anchors。
+不要使用另一侧文本。不要根据另一侧文本补全当前侧没有出现的内容。不要根据
+reference_translation 补全当前侧内容。
+Anchor 是关键可核验信息锚点，包括人名、机构、国家、城市、地点、时间、日期、年份、数量、金额、
+比例、百分比、度量单位、产品名、项目名、政策名、文件名、专业术语、限定对象、明确指称的群体或
+对象。
+只抽取当前文本中实际出现、可以被逐字证据支持的 anchor。不要抽取没有逐字证据的内容。不要改写原
+文或译文。不要推测省略内容。
+每个 anchor 必须绑定 unit_id。
+evidence_span 必须是当前 unit 文本中逐字出现的连续片段。
+normalized_meaning 用于写出该 anchor 的规范化含义，可以进行必要的标准化，例如把“百分之三
+十”规范为“30%”，把“二〇二五年”规范为“2025 年”。但 normalized_meaning 不能加入文本中没
+有的信息。
+输出 JSON，不输出解释性文字。
+如果 side = source，输出格式为：
+{
+"source_anchors": [
+{
+"unit_id": "U1",
+"anchor_id": "SA1",
+"anchor_text": "anchor surface text",
+"normalized_meaning": "normalized meaning",
+"evidence_span": "verbatim evidence span"
+}
+]
+}
+9
+===== PAGE 10 =====
+如果 side = target，输出格式为：
+{
+"target_anchors": [
+{
+"unit_id": "U1",
+"anchor_id": "TA1",
+"anchor_text": "anchor surface text",
+"normalized_meaning": "normalized meaning",
+"evidence_span": "verbatim evidence span"
+}
+]
+}
+10. Step 4 和 Step 5：Event 抽取
+10.1 设计方式
+Event 抽取使用同一个 Prompt 模板，调用两次。
+第一次调用时 side = source ，只读取 source_unit ，输出 source_events 。
+第二次调用时 side = target ，只读取 target_unit ，输出 target_events 。
+Event 抽取必须独立于 anchor 抽取。即使输入 JSON 中已经存在 anchors，event Prompt 也不应使用 anchor
+结果。Event Prompt 只看当前侧文本单元本身。
+10.2 Event 定义
+Event 是文本中表达的最小完整语义事件或状态判断。
+Event 包括动作、状态、变化、判断、态度、言说行为、关系成立、影响发生等。
+Event 需要尽量表达完整，不要只抽孤立动词。例如不要只抽“增长”，而应抽“收入增长了 15%”；不要只
+抽“宣布”，而应抽“公司宣布新的投资计划”。
+10.3 输出字段
+{
+"source_events":[
+{
+"unit_id":"U1",
+"event_id":"SE1",
+"event_text":"事件表面文本或摘要",
+"canonical_meaning":"事件规范化含义",
+"evidence_span":"当前文本中的逐字证据"
+}
+]
+}
+10
+===== PAGE 11 =====
+或：
+{
+"target_events":[
+{
+"unit_id":"U1",
+"event_id":"TE1",
+"event_text":"事件表面文本或摘要",
+"canonical_meaning":"事件规范化含义",
+"evidence_span":"当前文本中的逐字证据"
+}
+]
+}
+10.4 Prompt
+你是同声传译质量评估 Agent 的 event 抽取器。
+你的任务是从输入文本单元中抽取最小完整事件、状态或判断。你只做抽取，不做源译比较，不判断译文
+是否正确，不打分。
+本次处理侧为：{side}
+如果 side = source，你只能读取每个 aligned_unit 的 source_unit，并输出 source_events。
+如果 side = target，你只能读取每个 aligned_unit 的 target_unit，并输出 target_events。
+不要使用另一侧文本。不要根据另一侧文本补全当前侧没有出现的内容。不要根据
+reference_translation 补全当前侧内容。不要使用 anchor 抽取结果作为事件抽取依据。
+Event 是文本中表达的最小完整语义事件、状态或判断，包括动作、状态、变化、判断、态度、言说行
+为、关系成立、影响发生等。
+Event 应尽量表达完整语义，不要只抽孤立动词或孤立名词。事件中可以包含文本中实际出现的主体、动
+作、对象、方向、否定、情态、状态和结果。
+每个 event 必须绑定 unit_id。
+evidence_span 必须是当前 unit 文本中逐字出现的连续片段，能够支持该 event 的存在。
+canonical_meaning 可以对事件含义进行规范化表达，但不能加入文本中没有的信息。
+输出 JSON，不输出解释性文字。
+如果 side = source，输出格式为：
+{
+"source_events": [
+{
+"unit_id": "U1",
+"event_id": "SE1",
+"event_text": "event surface text or concise description",
+11
+===== PAGE 12 =====
+"canonical_meaning": "canonical event meaning",
+"evidence_span": "verbatim evidence span"
+}
+]
+}
+如果 side = target，输出格式为：
+{
+"target_events": [
+{
+"unit_id": "U1",
+"event_id": "TE1",
+"event_text": "event surface text or concise description",
+"canonical_meaning": "canonical event meaning",
+"evidence_span": "verbatim evidence span"
+}
+]
+}
+11. Step 6 和 Step 7：Relation 抽取
+11.1 设计方式
+Relation 抽取使用同一个 Prompt 模板，调用两次。
+第一次调用时 side = source ，读取 source_unit 和 source_events ，输出 source_relations 。
+第二次调用时 side = target ，读取 target_unit 和 target_events ，输出 target_relations 。
+Relation 可以参考同一侧的 event，因为 relation 本身是事件或命题之间的逻辑连接。但 source relation 抽取
+不能看 target 文本或 target events；target relation 抽取不能看 source 文本或 source events。
+11.2 Relation 定义
+Relation 是事件之间、命题之间或信息片段之间的逻辑关系。包括因果、条件、转折、让步、目的、时序、比
+较、归因、解释、例外、递进等。
+Relation 可以在同一个 unit 内，也可以跨相邻 unit。跨相邻 unit 时，必须明确涉及哪些 unit。
+11.3 输出字段
+{
+"source_relations":[
+{
+"relation_id":"SR1",
+"unit_ids":["U1","U2"],
+"relation_text":"关系描述",
+"relation_meaning":"规范化关系含义",
+"evidence_span":"逐字证据",
+12
+===== PAGE 13 =====
+"related_event_ids":["SE1","SE2"]
+}
+]
+}
+或：
+{
+"target_relations":[
+{
+"relation_id":"TR1",
+"unit_ids":["U1","U2"],
+"relation_text":"关系描述",
+"relation_meaning":"规范化关系含义",
+"evidence_span":"逐字证据",
+"related_event_ids":["TE1","TE2"]
+}
+]
+}
+11.4 Prompt
+你是同声传译质量评估 Agent 的 relation 抽取器。
+你的任务是从当前侧文本和当前侧 events 中抽取逻辑关系。你只做抽取，不做源译比较，不判断译文是
+否正确，不打分。
+本次处理侧为：{side}
+如果 side = source，你只能读取 source_unit 和 source_events，并输出 source_relations。
+如果 side = target，你只能读取 target_unit 和 target_events，并输出 target_relations。
+不要使用另一侧文本。不要使用另一侧 events。不要根据 reference_translation 补全当前侧没有表达
+的关系。
+Relation 是事件之间、命题之间或信息片段之间的逻辑关系，包括因果、条件、转折、让步、目的、时
+序、比较、归因、解释、例外、递进等。
+Relation 可以出现在同一个 unit 内，也可以跨相邻 unit。不要抽取没有明确文本依据的关系。不要根
+据常识推断文本没有表达的关系。
+每个 relation 必须包含 unit_ids。每个 relation 必须有 evidence_span。evidence_span 必须是当前
+侧文本中逐字出现的连续片段或可以明确支持该关系的关系触发词。
+related_event_ids 填写该 relation 涉及的当前侧 event_id。如果无法稳定绑定 event_id，可以填空
+数组，但不能编造 event_id。
+输出 JSON，不输出解释性文字。
+如果 side = source，输出格式为：
+13
+===== PAGE 14 =====
+{
+"source_relations": [
+{
+"relation_id": "SR1",
+"unit_ids": ["U1"],
+"relation_text": "relation surface description",
+"relation_meaning": "canonical relation meaning",
+"evidence_span": "verbatim evidence span",
+"related_event_ids": ["SE1", "SE2"]
+}
+]
+}
+如果 side = target，输出格式为：
+{
+"target_relations": [
+{
+"relation_id": "TR1",
+"unit_ids": ["U1"],
+"relation_text": "relation surface description",
+"relation_meaning": "canonical relation meaning",
+"evidence_span": "verbatim evidence span",
+"related_event_ids": ["TE1", "TE2"]
+}
+]
+}
+12. Step 8：整体 Fluency 评判
+12.1 目标
+Fluency 评判只看完整 si_translation ，不按 unit 逐句判断，也不看源文。它判断译文本身作为目标语文本
+是否清楚、自然、可理解。
+12.2 输出字段
+{
+"fluency_issues":[
+{
+"issue_id":"F1",
+"target_span":"译文中的逐字问题片段",
+"issue_description":"问题说明",
+"severity":"minor | moderate | major | critical"
+}
+],
+"fluency_assessment":"整体流利度评价"
+}
+14
+===== PAGE 15 =====
+12.3 Prompt
+你是同声传译质量评估 Agent 的 fluency 评判器。
+你的任务是评估完整同传译文本身是否清楚、自然、可理解。
+你只能读取完整 si_translation。不要读取 source_text，不要根据源文判断译文是否忠实。内容误译、
+漏译、逻辑错误不属于 fluency 问题，除非它们同时导致目标语文本本身不可理解。
+你需要识别以下问题：
+1. 目标语语法混乱。
+2. 句子残缺导致不可理解。
+3. 指代不清导致听众无法理解。
+4. 源语残留。
+5. 目标语搭配严重异常。
+6. 表达生硬到明显影响理解。
+7. 整段衔接混乱，导致整体不可理解。
+不要因为同传译文口语化、简短、顺句驱动或不同于书面参考译文，就判为 fluency 问题。
+每个问题必须引用 si_translation 中逐字出现的 target_span。
+输出 JSON，不输出解释性文字：
+{
+"fluency_issues": [
+{
+"issue_id": "F1",
+"target_span": "verbatim target span",
+"issue_description": "brief issue description",
+"severity": "minor | moderate | major | critical"
+}
+],
+"fluency_assessment": "overall fluency assessment"
+}
+13. Step 9：整体 SI Expression 评判
+13.1 目标
+SI expression 评判完整同传译文是否符合同传表达要求。它看完整 source_text 和完整 si_translation ，
+但不负责判断 anchor、event、relation 是否忠实。
+13.2 输出字段
+{
+"si_expression_issues":[
+{
+"issue_id":"E1",
+15
+===== PAGE 16 =====
+"target_span":"译文中的逐字问题片段",
+"issue_description":"问题说明",
+"severity":"minor | moderate | major | critical"
+}
+],
+"si_expression_assessment":"整体同传表达评价"
+}
+13.3 Prompt
+你是同声传译质量评估 Agent 的同传表达质量评判器。
+你的任务是评估完整同传译文作为同声传译输出是否简洁、顺畅、有效。
+你可以读取完整 source_text 和完整 si_translation。source_text 只用于理解同传译文是否存在明显
+不必要添加、无意义重复、过度解释或表达拖沓。你不负责判断 anchor、event、relation 是否忠实；这
+些内容由后续内容忠实度评判完成。
+你需要识别以下问题：
+1. 无意义重复。
+2. 过量填充。
+3. 没有信息增量的反复改述。
+4. 明显拖沓，影响同传听感。
+5. 不必要解释。
+6. 明显无依据添加。
+7. 因顺句堆叠造成表达效率低或听众理解负担过高。
+不要惩罚合理压缩。不要惩罚合理省略低信息量口语内容。不要因为译文不同于参考译文就判为问题。不
+要把内容误译重复记为 SI expression 问题。
+每个问题必须引用 si_translation 中逐字出现的 target_span。
+输出 JSON，不输出解释性文字：
+{
+"si_expression_issues": [
+{
+"issue_id": "E1",
+"target_span": "verbatim target span",
+"issue_description": "brief issue description",
+"severity": "minor | moderate | major | critical"
+}
+],
+"si_expression_assessment": "overall SI expression assessment"
+}
+16
+===== PAGE 17 =====
+14. Step 10：Anchor 内容忠实度评判
+14.1 目标
+比较 source_anchors 和 target_anchors ，判断源文关键 anchor 是否在对应译文单元中被准确传达。
+评判以 aligned_unit 为主。也就是说，默认在同一个 unit_id 内比较 source anchor 和 target anchor。若存
+在明显的同传延迟或局部补偿，可以在相邻 unit 中寻找对应，但必须说明原因。
+14.2 输出字段
+{
+"anchor_judgements":[
+{
+"unit_id":"U1",
+"source_anchor_id":"SA1",
+"source_anchor":"源文 anchor",
+"target_match":"译文中对应表达，可以为空",
+"target_anchor_ids":["TA1"],
+"verdict":"correct | partially_correct | incorrect | missing | uncertain",
+"explanation":"判断说明"
+}
+],
+"anchor_fidelity_assessment":"整体 anchor 忠实度评价"
+}
+14.3 Prompt
+你是同声传译质量评估 Agent 的 anchor 内容忠实度评判器。
+你的任务是比较 source_anchors 和 target_anchors，判断每个源文 anchor 是否在同传译文中被准确传
+达。
+你可以读取 aligned_units、source_anchors、target_anchors、source_text、si_translation 和
+reference_translation。source_text 是事实依据。si_translation 是待测译文。
+reference_translation 只能辅助理解术语和可能译法，不能作为判错证据。
+判断原则：
+1. 默认在相同 unit_id 内寻找对应译文 anchor。
+2. 如果存在明显同传延迟、局部倒序或句组合并，可以在相邻 unit 中寻找对应，但必须在 explanation
+中说明。
+3. 一个中文 anchor 可能对应多个英文表达，一个英文 anchor 也可能对应多个中文表达。不要因为译文
+没有采用某个固定译法就判错。
+4. 判断语义等价，不做机械字符串匹配。
+5. 如果译文准确表达源文 anchor，verdict = correct。
+6. 如果译文表达了部分信息但不完整，verdict = partially_correct。
+7. 如果译文表达了错误的对象、数字、时间、术语、范围或单位，verdict = incorrect。
+8. 如果找不到任何对应表达，verdict = missing。
+9. 如果证据不足或存在多种合理解释，verdict = uncertain。
+17
+===== PAGE 18 =====
+10. 不要判断 event、relation 或 fluency 问题。
+必须为每个 source_anchor 输出一条 judgement。
+输出 JSON，不输出解释性文字：
+{
+"anchor_judgements": [
+{
+"unit_id": "U1",
+"source_anchor_id": "SA1",
+"source_anchor": "source anchor text",
+"target_match": "target expression or empty string",
+"target_anchor_ids": ["TA1"],
+"verdict": "correct | partially_correct | incorrect | missing | uncertain",
+"explanation": "brief explanation"
+}
+],
+"anchor_fidelity_assessment": "overall anchor fidelity assessment"
+}
+15. Step 11：Event 内容忠实度评判
+15.1 目标
+比较 source_events 和 target_events ，判断源文核心事件是否在同传译文中被准确保留。
+评判以 aligned_unit 为主，全文复核为辅。
+15.2 输出字段
+{
+"event_judgements":[
+{
+"unit_id":"U1",
+"source_event_id":"SE1",
+"source_event":"源文 event",
+"target_match":"译文中对应 event，可以为空",
+"target_event_ids":["TE1"],
+"verdict":"correct | partially_correct | incorrect | missing | uncertain",
+"explanation":"判断说明"
+}
+],
+"event_fidelity_assessment":"整体 event 忠实度评价"
+}
+18
+===== PAGE 19 =====
+15.3 Prompt
+你是同声传译质量评估 Agent 的 event 内容忠实度评判器。
+你的任务是比较 source_events 和 target_events，判断每个源文 event 是否在同传译文中被准确保
+留。
+你可以读取 aligned_units、source_events、target_events、source_text、si_translation 和
+reference_translation。source_text 是事实依据。si_translation 是待测译文。
+reference_translation 只能辅助理解源文含义和可能表达，不能作为判错证据。
+判断原则：
+1. 默认在相同 unit_id 内寻找对应译文 event。
+2. 如果存在明显同传延迟、局部倒序或句组合并，可以在相邻 unit 中寻找对应，但必须在 explanation
+中说明。
+3. 判断事件语义是否保留，而不是判断表面词是否一致。
+4. 如果主体、动作、状态、变化方向、判断、态度、否定、情态、主客体关系等核心含义准确保留，
+verdict = correct。
+5. 如果事件大体保留但存在局部信息损失，verdict = partially_correct。
+6. 如果事件方向、主体、对象、否定、情态、判断或核心动作错误，verdict = incorrect。
+7. 如果源文 event 没有对应表达，verdict = missing。
+8. 如果证据不足或存在多种合理解释，verdict = uncertain。
+9. 不要重复判断 anchor 错误，除非 anchor 错误导致事件语义本身发生变化。
+10. 不要判断 fluency 或 SI expression 问题。
+必须为每个 source_event 输出一条 judgement。
+输出 JSON，不输出解释性文字：
+{
+"event_judgements": [
+{
+"unit_id": "U1",
+"source_event_id": "SE1",
+"source_event": "source event",
+"target_match": "target event expression or empty string",
+"target_event_ids": ["TE1"],
+"verdict": "correct | partially_correct | incorrect | missing | uncertain",
+"explanation": "brief explanation"
+}
+],
+"event_fidelity_assessment": "overall event fidelity assessment"
+}
+16. Step 12：Relation 内容忠实度评判
+16.1 目标
+比较 source_relations 和 target_relations ，判断源文逻辑关系是否在同传译文中被准确保留。
+19
+===== PAGE 20 =====
+Relation 可以跨相邻 unit，因此评判时允许查看相关 unit 和相邻 unit。
+16.2 输出字段
+{
+"relation_judgements":[
+{
+"source_relation_id":"SR1",
+"source_relation":"源文 relation",
+"target_match":"译文中对应 relation，可以为空",
+"target_relation_ids":["TR1"],
+"verdict":"correct | weakened | incorrect | missing | uncertain",
+"explanation":"判断说明"
+}
+],
+"relation_fidelity_assessment":"整体 relation 忠实度评价"
+}
+16.3 Prompt
+你是同声传译质量评估 Agent 的 relation 内容忠实度评判器。
+你的任务是比较 source_relations 和 target_relations，判断每个源文逻辑关系是否在同传译文中被准
+确保留。
+你可以读取 aligned_units、source_relations、target_relations、source_events、target_events、
+source_text、si_translation 和 reference_translation。source_text 是事实依据。si_translation
+是待测译文。reference_translation 只能辅助理解，不能作为判错证据。
+判断原则：
+1. 判断逻辑关系是否保留，而不是判断关系词是否字面一致。
+2. 因果、条件、转折、让步、目的、时序、比较、归因、解释、例外、递进等关系都应被评估。
+3. 如果逻辑关系准确保留，verdict = correct。
+4. 如果关系被弱化但仍能大体理解，verdict = weakened。
+5. 如果关系被反转、误置或变成另一种关系，verdict = incorrect。
+6. 如果源文关系没有对应表达，verdict = missing。
+7. 如果证据不足或存在多种合理解释，verdict = uncertain。
+8. 不要重复判断 anchor 或 event 错误，除非 relation 本身发生独立错误。
+9. 不要判断 fluency 或 SI expression 问题。
+必须为每个 source_relation 输出一条 judgement。
+输出 JSON，不输出解释性文字：
+{
+"relation_judgements": [
+{
+"source_relation_id": "SR1",
+"source_relation": "source relation",
+20
+===== PAGE 21 =====
+"target_match": "target relation expression or empty string",
+"target_relation_ids": ["TR1"],
+"verdict": "correct | weakened | incorrect | missing | uncertain",
+"explanation": "brief explanation"
+}
+],
+"relation_fidelity_assessment": "overall relation fidelity assessment"
+}
+17. Step 13：内容忠实度全文复核
+17.1 目标
+全文复核不重新自由评分，而是在局部 anchor、event、relation 判断完成后，检查是否存在局部评判遗漏、
+冲突或重复。
+内容忠实度采用“切分后的对齐单元为主，全文复核为辅”的原则。全文复核不能绕过前面的结构化判断直接
+重新打分，但可以指出需要修正或注意的问题。
+17.2 复核内容
+全文复核重点检查：
+1. 某个 anchor、event 或 relation 在当前 unit 中看似缺失，但在相邻 unit 或后文中被明显延迟表达。
+2. 某个术语或对象在全文中翻译不一致。
+3. 某个局部判断与全文语境冲突。
+4. 同一个错误被多个 judgement 重复记录。
+5. 跨句逻辑关系没有被 relation 判断捕捉。
+6. 译文整体是否造成与源文相反或严重偏离的理解。
+17.3 输出字段
+{
+"global_fidelity_review":{
+"delayed_expression_notes":[],
+"consistency_notes":[],
+"possible_duplicate_errors":[],
+"missed_global_issues":[],
+"overall_fidelity_comment":""
+}
+}
+17.4 Prompt
+你是同声传译质量评估 Agent 的内容忠实度全文复核器。
+你的任务是在 anchor_judgements、event_judgements 和 relation_judgements 已经完成的基础上，进
+行全文级复核。
+21
+===== PAGE 22 =====
+你可以读取完整 source_text、完整 si_translation、aligned_units、anchor_judgements、
+event_judgements、relation_judgements、source_anchors、target_anchors、source_events、
+target_events、source_relations 和 target_relations。
+你不能绕过前面的 judgement 重新自由打分。你的任务是检查局部判断是否存在遗漏、冲突、重复或需要
+解释的全文现象。
+重点检查：
+1. 当前 unit 中看似缺失的信息是否在相邻 unit 或后文中被明确延迟表达。
+2. 术语、对象、指代在全文中是否一致。
+3. 局部 judgement 是否与全文语境冲突。
+4. 同一个错误是否被多个 judgement 重复记录。
+5. 是否存在跨句逻辑关系漏判。
+6. 译文整体是否造成源文没有的严重误导。
+输出 JSON，不输出解释性文字：
+{
+"global_fidelity_review": {
+"delayed_expression_notes": [],
+"consistency_notes": [],
+"possible_duplicate_errors": [],
+"missed_global_issues": [],
+"overall_fidelity_comment": ""
+}
+}
+18. Step 14：五维分数计算
+18.1 目标
+根据已经生成的结构化评判结果，给五个维度分别打 0 到 100 分。
+本步骤不能新增错误。它只能使用已经生成的 anchor_judgements 、 event_judgements 、
+relation_judgements 、 fluency_issues 、 si_expression_issues 和 global_fidelity_review 。
+18.2 分数尺度
+五个维度统一采用 0 到 100 分。
+95-100：几乎没有实质问题，只有极轻微瑕疵。
+85-94：整体很好，存在少量局部问题，但不影响主要信息理解。
+75-84：基本可用，有若干明显问题，但核心内容大体保留。
+60-74：问题较多，听众能理解部分主要内容，但信息损失或误导明显。
+40-59：严重不完整或多处误译，只能保留少量有效信息。
+0-39：整体失败，大量核心信息缺失、反译或不可理解。
+22
+===== PAGE 23 =====
+18.3 输出字段
+{
+"dimension_scores":{
+"anchor_fidelity":0,
+"event_fidelity":0,
+"relation_fidelity":0,
+"fluency":0,
+"si_expression":0
+},
+"dimension_score_explanations":{
+"anchor_fidelity":"",
+"event_fidelity":"",
+"relation_fidelity":"",
+"fluency":"",
+"si_expression":""
+}
+}
+18.4 Prompt
+你是同声传译质量评估 Agent 的五维评分器。
+你的任务是根据已经完成的结构化评判结果，为五个维度分别给出 0 到 100 分。
+你只能使用以下字段作为评分依据：
+anchor_judgements
+event_judgements
+relation_judgements
+fluency_issues
+si_expression_issues
+global_fidelity_review
+你不能新增错误。你不能根据原文和译文重新自由判断。你不能把未在前面字段中出现的问题直接用于扣
+分。如果你发现疑似新问题，只能在解释中说明其需要复核，不能直接作为主要扣分依据。
+五个维度为：
+anchor_fidelity
+event_fidelity
+relation_fidelity
+fluency
+si_expression
+评分尺度：
+95-100：几乎没有实质问题，只有极轻微瑕疵。
+85-94：整体很好，存在少量局部问题，但不影响主要信息理解。
+75-84：基本可用，有若干明显问题，但核心内容大体保留。
+60-74：问题较多，听众能理解部分主要内容，但信息损失或误导明显。
+40-59：严重不完整或多处误译，只能保留少量有效信息。
+23
+===== PAGE 24 =====
+0-39：整体失败，大量核心信息缺失、反译或不可理解。
+输出 JSON，不输出解释性文字：
+{
+"dimension_scores": {
+"anchor_fidelity": 0,
+"event_fidelity": 0,
+"relation_fidelity": 0,
+"fluency": 0,
+"si_expression": 0
+},
+"dimension_score_explanations": {
+"anchor_fidelity": "brief explanation",
+"event_fidelity": "brief explanation",
+"relation_fidelity": "brief explanation",
+"fluency": "brief explanation",
+"si_expression": "brief explanation"
+}
+}
+19. Step 15：总分计算与总结
+19.1 总分权重
+总分采用固定权重：
+anchor_fidelity：30
+event_fidelity：25
+relation_fidelity：20
+fluency：15
+si_expression：10
+最终分数计算公式：
+final_score =
+anchor_fidelity × 0.30
++ event_fidelity × 0.25
++ relation_fidelity × 0.20
++ fluency × 0.15
++ si_expression × 0.10
+五个维度分数由大模型判断。最终加权汇总可以由程序机械计算。程序只执行我们定义好的评价协议，不进行
+语义判断。
+19.2 总结要求
+最终总结必须基于前面已经生成的结构化结果。不能新增错误，不能重新自由评价。
+24
+===== PAGE 25 =====
+总结需要包含：
+1. 总体判断。
+2. 主要优势。
+3. 主要错误。
+4. 不确定点。
+5. 五维分数。
+6. 最终分数。
+19.3 输出字段
+{
+"dimension_weights":{
+"anchor_fidelity":30,
+"event_fidelity":25,
+"relation_fidelity":20,
+"fluency":15,
+"si_expression":10
+},
+"final_score":0,
+"score_summary":{
+"overall_judgement":"",
+"main_strengths":[],
+"main_errors":[],
+"uncertain_points":[]
+}
+}
+19.4 Prompt
+你是同声传译质量评估 Agent 的最终总结器。
+你的任务是根据五个维度分数和前面所有结构化评判结果，生成最终评估总结。
+你可以读取：
+dimension_scores
+dimension_score_explanations
+anchor_judgements
+event_judgements
+relation_judgements
+fluency_issues
+si_expression_issues
+global_fidelity_review
+你不能新增错误。你不能根据原文和译文重新自由判断。总结必须忠实于前面的结构化结果。
+总分权重为：
+anchor_fidelity：30
+event_fidelity：25
+25
+===== PAGE 26 =====
+relation_fidelity：20
+fluency：15
+si_expression：10
+final_score 已由加权公式得到：
+final_score =
+anchor_fidelity × 0.30
++ event_fidelity × 0.25
++ relation_fidelity × 0.20
++ fluency × 0.15
++ si_expression × 0.10
+请输出 JSON，不输出解释性文字：
+{
+"dimension_weights": {
+"anchor_fidelity": 30,
+"event_fidelity": 25,
+"relation_fidelity": 20,
+"fluency": 15,
+"si_expression": 10
+},
+"final_score": 0,
+"score_summary": {
+"overall_judgement": "overall judgement",
+"main_strengths": [],
+"main_errors": [],
+"uncertain_points": []
+}
+}
+20. 关键设计约束
+20.1 切分对齐阶段可以同时看原文和译文
+因为切分对齐的任务是建立局部比较范围。它不是语义判断，也不是打分。
+20.2 抽取阶段必须单侧独立
+source anchor 抽取只看 source_unit。
+target anchor 抽取只看 target_unit。
+source event 抽取只看 source_unit。
+target event 抽取只看 target_unit。
+source relation 抽取只看 source_unit 和 source_events。
+target relation 抽取只看 target_unit 和 target_events。
+26
+===== PAGE 27 =====
+这样可以减少模型根据另一侧文本脑补内容的风险。
+20.3 判断阶段才允许源译同时出现
+anchor judgement、event judgement、relation judgement 阶段可以同时看源文结构和译文结构，因为这些
+阶段的任务就是判断源译是否对应、是否等价、是否缺失、是否错误。
+20.4 Fluency 是整体译文维度
+fluency 不按 unit 打分，只看完整 si_translation 。它只评目标语整体清楚度、自然度和可理解性。
+20.5 SI Expression 是整体同传表达维度
+SI expression 看完整 source_text 和完整 si_translation ，判断译文作为同传输出是否简洁、顺畅、有
+效。它不重复评判 anchor、event、relation 忠实度。
+20.6 内容忠实度以切分单元为主，全文复核为辅
+anchor、event、relation 的基础判断在 aligned_unit 内完成。全文复核只用于检查延迟表达、术语一致性、
+跨句逻辑、重复错误和局部冲突。
+20.7 最终评分不能新增错误
+最终评分只能基于前面已经生成的结构化证据。评分阶段不能绕过前面流程重新自由判错。
+21. 工程实施要点
+21.1 Prompt 模板数量
+实际工程中不需要为每一步都写完全不同的 Prompt。推荐 Prompt 模板如下：
+1. split_align_prompt
+2. anchor_extraction_prompt
+调用两次：source / target
+3. event_extraction_prompt
+调用两次：source / target
+4. relation_extraction_prompt
+调用两次：source / target
+5. fluency_evaluation_prompt
+6. si_expression_evaluation_prompt
+7. anchor_judgement_prompt
+8. event_judgement_prompt
+27
+===== PAGE 28 =====
+9. relation_judgement_prompt
+10. global_fidelity_review_prompt
+11. dimension_scoring_prompt
+12. final_summary_prompt
+21.2 每一步输入控制
+虽然 JSONL 会滚动保留所有字段，但每次调用模型时最好只传当前 Prompt 需要的字段。
+例如 source anchor 抽取时，只传 sample_id 、 aligned_units.unit_id 和 aligned_units.source_unit 。
+不要把 target_unit 、 target_anchors 或后续字段传进去。
+这样可以保证 Prompt 责任边界更清楚，也能减少模型信息泄漏。
+21.3 格式校验
+代码可以做以下格式校验：
+1. JSON 是否可解析。
+2. 必填字段是否存在。
+3. unit_id 是否重复。
+4. anchor_id、event_id、relation_id 是否重复。
+5. evidence_span 是否出现在对应文本中。
+6. 切分后 source_unit 拼接是否等于 source_text 。
+7. 切分后 target_unit 拼接是否等于 si_translation 。
+8. 分数是否在 0 到 100 之间。
+9. 维度权重是否为固定值。
+这些校验不是语义规则，不判断翻译对错，只保证输出结构可用。
+21.4 失败处理
+如果某一步输出 JSON 不可解析，重试该步骤。
+如果切分无损校验失败，重试切分步骤。
+如果 evidence_span 不存在于对应文本，重试对应抽取步骤。
+如果连续重试仍失败，将该样本写入 bad cases 文件，不生成最终分数。
+21.5 断点续跑
+每一步都写独立 JSONL。已经完成的样本不重复调用模型。后续流程从最近可用的中间文件继续。
+21.6 多系统评估
+多个系统的评估应独立进行。每个系统的 si_translation 单独进入完整流程。
+28
+===== PAGE 29 =====
+同一个 sample_id 的不同系统可以共享 source_text ，但由于切分对齐依赖具体译文， aligned_units 不
+应跨系统共享。
+source anchor、source event、source relation 理论上可以共享，但当前初版为了流程简单，可以每个系统独
+立跑。后续优化时再考虑缓存源文侧抽取结果。
+22. 当前版本不做的内容
+当前版本不评估真实同传延迟。
+当前版本不评估 partial 输出稳定性。
+当前版本不评估字幕闪烁。
+当前版本不评估音频质量。
+当前版本不评估系统 ASR。
+当前版本不使用时间戳。
+当前版本不把参考译文作为判错依据。
+当前版本不设置 anchor 或 event 的 1、2、3 重要程度。
+当前版本不做传统实体类别分类。
+当前版本不使用代码规则判断语义正确性。
+23. 当前版本的核心结论
+本方案的核心流程是：
+先将原文和同传译文无损切分并对齐为句子/句组级一对一评估单元。
+然后分别在原文侧和译文侧独立抽取 anchor、event 和 relation。
+接着整体评判译文 fluency 和 SI expression。
+之后在切分单元内完成 anchor、event、relation 的内容忠实度评判，并通过全文复核修正局部判断可能存在
+的遗漏或冲突。
+最后基于结构化结果给出五个维度分数，并按照 anchor 30、event 25、relation 20、fluency 15、SI
+expression 10 的权重计算最终分数。
+整个系统的客观性来自两个方面：第一，评估不是直接自由打分，而是经过切分、抽取、判断、复核、评分的
+链式流程；第二，最终分数必须受前面结构化证据约束，不能在评分阶段重新任意新增错误。
+29

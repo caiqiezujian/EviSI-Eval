@@ -1,0 +1,8 @@
+{
+  "sample_id": "en2zh-01-tech_002",
+  "source_text": "to say hey, maybe three, three x replication and replication right, why do we do this? Well we do do it to make sure that we have, uh, data available um, when there's an outage so if, so you know if I if I were to you know, I mean like, do this right to indicate three replicas but that's that's a little, naive, um and the same thing for the metadata of course. But, um, the, replicating the data is not just for availability and and downtime, it's also, you would want to place those replicas, um, closer to where the users are and so from a global perspective, you might have music that is more local like, um maybe European punk rock is, you know, more, listened to more in Europe, uh and maybe maybe BTS uh is, you know because it's Korean pop is maybe it's more popular actually in Korea, um or in Asia,",
+  "reference_translation": "比如三重复制。为什么这样做呢？这样做是为了确保出现故障时数据依然可用。 但是如果我要是做了这个，来显示它有三个副本，那有点小儿科了，对于元数据来说也是同理。 但是复制数据不只是因为可用性和宕机， 同时也是想将这些副本放到离用户更近的地方。从全球视野来看，你就会有更加本地化的音乐， 比如欧洲朋克音乐在欧洲的听众可能更多， 防弹少年团可能，因为是韩国流行乐，所以可能在韩国更受欢迎，或者说在亚洲更受欢迎。",
+  "src_lang": "en",
+  "tgt_lang": "zh",
+  "domain": "tech"
+}

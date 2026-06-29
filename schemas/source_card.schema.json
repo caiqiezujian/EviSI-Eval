@@ -1,27 +1,39 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.invalid/evisi/source-card-0.4.1.schema.json",
-  "title": "EviSI-Eval Source Card 0.4.1",
+  "$id": "https://example.invalid/evisi/source-card-v0.3.schema.json",
+  "title": "EviSI-Eval v0.3 Source Card",
   "type": "object",
-  "required": ["sample_id", "source_text", "sentences", "anchors", "events", "relations", "allowed_omissions", "metadata"],
+  "required": ["sample_id", "source_text", "source_units", "source_anchors", "source_events", "source_relations", "metadata"],
   "properties": {
     "sample_id": {"type": "string", "minLength": 1},
     "source_text": {"type": "string", "minLength": 1},
-    "offline_translation": {"type": ["string", "null"]},
+    "reference_translation": {"type": ["string", "null"]},
     "src_lang": {"type": "string"},
     "tgt_lang": {"type": "string"},
     "domain": {"type": "string"},
-    "sentences": {"type": "array", "items": {"$ref": "#/$defs/sentence"}},
-    "anchors": {"type": "array", "items": {"$ref": "#/$defs/anchor"}},
-    "events": {"type": "array", "items": {"$ref": "#/$defs/event"}},
-    "relations": {"type": "array", "items": {"$ref": "#/$defs/relation"}},
-    "allowed_omissions": {"type": "array", "items": {"type": "object", "required": ["source_span", "reason"]}},
-    "metadata": {"type": "object", "required": ["schema_version", "card_hash", "card_status"]}
+    "source_units": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/source_unit"}},
+    "source_anchors": {"type": "array", "items": {"$ref": "#/$defs/source_anchor"}},
+    "source_events": {"type": "array", "items": {"$ref": "#/$defs/source_event"}},
+    "source_relations": {"type": "array", "items": {"$ref": "#/$defs/source_relation"}},
+    "metadata": {"type": "object", "required": ["protocol_version", "source_card_hash", "agent_trace", "prompt_hashes"]}
   },
   "$defs": {
-    "sentence": {"type": "object", "required": ["sentence_id", "sentence_text", "anchor_ids"], "properties": {"sentence_id": {"type": "string"}, "sentence_text": {"type": "string"}, "anchor_ids": {"type": "array", "items": {"type": "string"}}}},
-    "anchor": {"type": "object", "required": ["anchor_id", "sentence_id", "source_span", "normalized_value", "anchor_type", "importance", "required", "confidence"], "properties": {"anchor_id": {"type": "string"}, "sentence_id": {"type": "string"}, "source_span": {"type": "string"}, "normalized_value": {"type": "string"}, "anchor_type": {"type": "string"}, "importance": {"enum": [1, 2, 3]}, "required": {"type": "boolean"}, "confidence": {"type": "number", "minimum": 0, "maximum": 1}}},
-    "event": {"type": "object", "required": ["event_id", "sentence_id", "evidence_spans", "canonical_meaning", "predicate", "arguments", "linked_anchor_ids", "attributes", "importance", "required", "confidence"], "properties": {"event_id": {"type": "string"}, "sentence_id": {"type": "string"}, "evidence_spans": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "canonical_meaning": {"type": "string"}, "predicate": {"type": "string"}, "arguments": {"type": "array"}, "linked_anchor_ids": {"type": "array", "items": {"type": "string"}}, "attributes": {"type": "object"}, "importance": {"enum": [1, 2, 3]}, "required": {"type": "boolean"}, "confidence": {"type": "number", "minimum": 0, "maximum": 1}}},
-    "relation": {"type": "object", "required": ["relation_id", "relation_type", "head_event_id", "dependent_event_id", "source_cues", "canonical_meaning", "importance", "required", "confidence"]}
+    "source_unit": {
+      "type": "object",
+      "required": ["source_unit_id", "source_unit"],
+      "properties": {"source_unit_id": {"type": "string"}, "source_unit": {"type": "string"}}
+    },
+    "source_anchor": {
+      "type": "object",
+      "required": ["source_unit_id", "source_anchor_id", "anchor_text", "normalized_meaning", "evidence_span"]
+    },
+    "source_event": {
+      "type": "object",
+      "required": ["source_unit_id", "source_event_id", "event_text", "canonical_meaning", "evidence_span"]
+    },
+    "source_relation": {
+      "type": "object",
+      "required": ["source_relation_id", "source_unit_ids", "relation_text", "relation_meaning", "evidence_spans", "related_source_event_ids"]
+    }
   }
 }

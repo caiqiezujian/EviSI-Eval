@@ -1,7 +1,5 @@
 import json
 
-import pytest
-
 from evisi_eval.llm_provider import ScriptedLLMClient
 from evisi_eval.pipeline import run_pipeline
 
@@ -10,38 +8,41 @@ def _write_jsonl(path, rows):
     path.write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows), encoding="utf-8")
 
 
-def _primary_responses():
+def _responses():
     return [
-        {"sentences": [{"sentence_id": "S1", "sentence_text": "Mark left.", "anchor_ids": ["A1"]}], "anchors": [{"anchor_id": "A1", "sentence_id": "S1", "source_span": "Mark", "normalized_value": "Mark", "anchor_type": "PERSON", "role_hint": "participant", "attributes": {}, "importance": 3, "required": True, "confidence": 0.95}]},
-        {"events": [{"event_id": "V1", "sentence_id": "S1", "evidence_spans": ["Mark left"], "canonical_meaning": "Mark left", "predicate": "leave", "arguments": [{"role": "agent", "anchor_id": "A1", "source_span": "Mark"}], "linked_anchor_ids": ["A1"], "attributes": {"polarity": "positive", "modality": "asserted", "direction": "exit", "scope": None, "tense_aspect": "past"}, "importance": 3, "required": True, "confidence": 0.95}], "relations": [], "allowed_omissions": []},
-        {"target_units": [{"unit_id": "T1", "unit_text": "马克离开了。"}], "sentence_alignments": [{"source_sentence_id": "S1", "source_sentence_text": "Mark left.", "target_unit_ids": ["T1"], "target_spans": ["马克离开了。"], "alignment_type": "one_to_one", "group_id": None, "confidence": 0.98, "reason": "clear semantic correspondence"}], "unaligned_target_unit_ids": []},
-        {"target_units": [{"unit_id": "T1", "unit_text": "马克离开了。"}], "target_anchors": [{"target_anchor_id": "TA1", "unit_id": "T1", "target_span": "马克", "normalized_value": "Mark", "anchor_type": "PERSON", "attributes": {}, "confidence": 0.95}], "target_events": [{"target_event_id": "TV1", "unit_ids": ["T1"], "evidence_spans": ["马克离开了"], "canonical_meaning": "Mark left", "predicate": "leave", "arguments": [{"role": "agent", "target_anchor_id": "TA1", "target_span": "马克"}], "attributes": {"polarity": "positive", "modality": "asserted", "direction": "exit", "scope": None, "tense_aspect": "past"}, "confidence": 0.95}], "target_relations": []},
-        {"anchor_alignments": [{"anchor_id": "A1", "target_anchor_ids": ["TA1"], "target_unit_ids": ["T1"], "target_spans": ["马克"], "verdict": "equivalent", "confidence": 0.98, "reason": "translated name"}], "event_alignments": [{"event_id": "V1", "target_event_ids": ["TV1"], "target_unit_ids": ["T1"], "target_spans": ["马克离开了"], "verdict": "covered", "error_scope": "none", "attribute_errors": [], "confidence": 0.98, "reason": "event preserved"}], "relation_alignments": []},
-        {"fluency_issues": [], "efficiency_issues": []},
+        {"source_units": [{"source_unit_id": "S1", "source_unit": "Mark left."}]},
+        {"source_anchors": [{"source_unit_id": "S1", "source_anchor_id": "SA1", "anchor_text": "Mark", "normalized_meaning": "Mark", "evidence_span": "Mark"}]},
+        {"source_events": [{"source_unit_id": "S1", "source_event_id": "SE1", "event_text": "Mark left", "canonical_meaning": "Mark left", "evidence_span": "Mark left"}]},
+        {"source_relations": []},
+        {"eval_units": [{"eval_unit_id": "E1", "source_unit_ids": ["S1"], "target_unit": "马克离开了。", "alignment_status": "aligned", "reason": "direct correspondence"}]},
+        {"target_anchors": [{"eval_unit_id": "E1", "target_anchor_id": "TA1", "anchor_text": "马克", "normalized_meaning": "Mark", "evidence_span": "马克"}]},
+        {"target_events": [{"eval_unit_id": "E1", "target_event_id": "TE1", "event_text": "马克离开了", "canonical_meaning": "Mark left", "evidence_span": "马克离开了"}]},
+        {"target_relations": []},
+        {"fluency_issues": [], "fluency_assessment": "译文清楚自然。"},
+        {"si_expression_issues": [], "si_expression_assessment": "表达简洁有效。"},
+        {"anchor_judgements": [{"anchor_judgement_id": "AJ1", "eval_unit_id": "E1", "source_anchor_id": "SA1", "source_anchor": "Mark", "target_match": "马克", "target_anchor_ids": ["TA1"], "verdict": "correct", "explanation": "人名准确传达。"}], "anchor_fidelity_assessment": "全部 anchor 正确。"},
+        {"event_judgements": [{"event_judgement_id": "EJ1", "eval_unit_id": "E1", "source_event_id": "SE1", "source_event": "Mark left", "target_match": "马克离开了", "target_event_ids": ["TE1"], "verdict": "correct", "explanation": "事件完整保留。"}], "event_fidelity_assessment": "全部 event 正确。"},
+        {"relation_judgements": [], "relation_fidelity_assessment": "源文无 relation。"},
+        {"global_fidelity_review": {"delayed_expression_notes": [], "consistency_notes": [], "possible_duplicate_errors": [], "missed_global_issues": [], "misleading_addition_notes": [], "overall_fidelity_comment": "全文一致。"}},
+        {"dimension_scores": {"anchor_fidelity": 100, "event_fidelity": 100, "relation_fidelity": 100, "fluency": 100, "si_expression": 100}, "dimension_score_explanations": {"anchor_fidelity": "1 correct。", "event_fidelity": "1 correct。", "relation_fidelity": "无适用项目。", "fluency": "0 issues。", "si_expression": "0 issues。"}},
+        {"dimension_weights": {"anchor_fidelity": 30, "event_fidelity": 25, "relation_fidelity": 20, "fluency": 15, "si_expression": 10}, "final_score": 100, "score_summary": {"overall_judgement": "准确、流畅。", "main_strengths": ["内容完整"], "main_errors": [], "uncertain_points": []}},
     ]
 
 
-def test_pipeline_runs_and_resume_is_hash_safe(tmp_path):
+def test_pipeline_writes_every_stage_and_hides_system_name(tmp_path):
     samples = tmp_path / "samples.jsonl"
     outputs = tmp_path / "outputs.jsonl"
-    _write_jsonl(samples, [{"sample_id": "s1", "transcript": "Mark left.", "src_lang": "en", "tgt_lang": "zh"}])
+    _write_jsonl(samples, [{"sample_id": "s1", "source_text": "Mark left.", "reference_translation": "马克离开了。", "src_lang": "en", "tgt_lang": "zh"}])
     _write_jsonl(outputs, [{"sample_id": "s1", "system_name": "system_a", "si_translation": "马克离开了。"}])
-    primary = ScriptedLLMClient(_primary_responses())
-    review = ScriptedLLMClient([])
-    metrics = run_pipeline(str(samples), str(outputs), str(tmp_path / "results"), "run", primary_client=primary, review_client=review)
+    client = ScriptedLLMClient(_responses())
+    metrics = run_pipeline(str(samples), str(outputs), str(tmp_path / "results"), "run", client=client)
+
     assert metrics["num_results"] == 1
     assert metrics["average_score"] == 100.0
-    assert (tmp_path / "results" / "run" / "report.html").exists()
-
-    resumed = run_pipeline(
-        str(samples), str(outputs), str(tmp_path / "results"), "run", resume=True,
-        primary_client=ScriptedLLMClient([]), review_client=ScriptedLLMClient([]),
-    )
-    assert resumed["num_results"] == 1
-
-    _write_jsonl(outputs, [{"sample_id": "s1", "system_name": "system_a", "si_translation": "马克没有离开。"}])
-    with pytest.raises(ValueError, match="outputs_sha256"):
-        run_pipeline(
-            str(samples), str(outputs), str(tmp_path / "results"), "run", resume=True,
-            primary_client=ScriptedLLMClient([]), review_client=ScriptedLLMClient([]),
-        )
+    run_dir = tmp_path / "results" / "run"
+    assert (run_dir / "source/source_04_relations.jsonl").exists()
+    assert (run_dir / "target/target_06_si_expression.jsonl").exists()
+    assert (run_dir / "score/score_06_final_results.jsonl").exists()
+    assert (run_dir / "report.html").exists()
+    assert all(call["payload"].get("system_name") != "system_a" for call in client.calls if "system_name" in call["payload"])
+    assert all("reference_translation" not in call["payload"] for call in client.calls)

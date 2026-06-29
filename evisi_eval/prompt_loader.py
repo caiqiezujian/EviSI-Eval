@@ -7,13 +7,22 @@ from pathlib import Path
 PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
 PROMPT_FILES = {
-    "source_anchors": "source_anchor_extractor.md",
-    "source_events": "source_event_extractor.md",
-    "sentence_alignment": "sentence_aligner.md",
-    "target_analysis": "target_semantic_analyzer.md",
-    "semantic_alignment": "semantic_aligner.md",
-    "target_delivery": "target_delivery_evaluator.md",
-    "error_review": "error_reviewer.md",
+    "source_sentence_segmentation": "source_sentence_segmentation_prompt.md",
+    "source_anchor_extraction": "source_anchor_extraction_prompt.md",
+    "source_event_extraction": "source_event_extraction_prompt.md",
+    "source_relation_extraction": "source_relation_extraction_prompt.md",
+    "target_aligned_segmentation": "target_aligned_segmentation_prompt.md",
+    "target_anchor_extraction": "target_anchor_extraction_prompt.md",
+    "target_event_extraction": "target_event_extraction_prompt.md",
+    "target_relation_extraction": "target_relation_extraction_prompt.md",
+    "fluency_evaluation": "fluency_evaluation_prompt.md",
+    "si_expression_evaluation": "si_expression_evaluation_prompt.md",
+    "anchor_judgement": "anchor_judgement_prompt.md",
+    "event_judgement": "event_judgement_prompt.md",
+    "relation_judgement": "relation_judgement_prompt.md",
+    "global_fidelity_review": "global_fidelity_review_prompt.md",
+    "dimension_scoring": "dimension_scoring_prompt.md",
+    "final_summary": "final_summary_prompt.md",
     "schema_repair": "schema_repair.md",
 }
 

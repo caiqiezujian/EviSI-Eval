@@ -1,0 +1,8 @@
+{
+  "sample_id": "en2zh-01-tech_004",
+  "source_text": "and it could have opened up a whole new aspect to the design. Overall, an excellent answer from Mark. Yeah, great job Mark, um, I think that was a a really good approach.",
+  "reference_translation": "而且可能为这个设计打开了全新的视角。总之，马克的回答很精彩。马克，做得好。我觉得这个方法非常好。",
+  "src_lang": "en",
+  "tgt_lang": "zh",
+  "domain": "tech"
+}
