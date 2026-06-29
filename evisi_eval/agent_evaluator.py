@@ -15,7 +15,7 @@ IMPORTANT — occurrence-level verification: Each fact in the card is an OCCURRE
 
 Do not invent an alias merely because it looks similar. For required technical terms and acronyms, an unlisted truncation or expansion (for example POCT -> POC) is ambiguous unless the target context explicitly preserves the complete technical concept. A wrong participant role or named object is not an acceptable paraphrase.
 
-Return {"verdicts":[...]} with exactly one result per fact_id. Fields: fact_id, verdict, target_span, normalized_target_value, confidence, reason. verdict must be exact, equivalent, incorrect, missing, or ambiguous. target_span must be copied verbatim from the SI translation or null. Use incorrect only when contradictory/different evidence is present; use missing only after checking the semantic position corresponding to the source sentence; use ambiguous when evidence is insufficient. Do not output scores, deductions, caps, or stylistic judgments. JSON only."""
+Return {"verdicts":[...]} with exactly one result per fact_id. Fields: fact_id, verdict, target_span, target_context_span, normalized_target_value, confidence, reason. verdict must be exact, equivalent, incorrect, missing, or ambiguous. target_span and target_context_span must be copied verbatim from the SI translation or null. target_context_span must be the smallest target clause that corresponds to the source sentence and contains target_span. Use incorrect only when contradictory/different evidence is present; use missing only after checking the semantic position corresponding to the source sentence; use ambiguous when evidence is insufficient. Do not output scores, deductions, caps, or stylistic judgments. JSON only."""
 
 PROPOSITION_SYSTEM_PROMPT = """You are the Core Proposition Verification Agent for final simultaneous-interpretation output.
 For every proposition, decide whether the listener receives the same atomic event, action, state, conclusion, or recommendation. Simultaneous-interpretation compression is valid: shorter wording is compressed_covered when the complete core meaning remains. Evaluate the predicate and arguments while avoiding a second penalty for fact values listed in linked_facts; those values are handled by the fact agent.
@@ -53,14 +53,15 @@ def evaluate_with_agents(
 
     traces: list[dict[str, Any]] = []
     fact_verdicts = []
-    if card.get("facts"):
+    scored_facts = [fact for fact in card.get("facts", []) if fact.get("is_score_anchor", True)]
+    if scored_facts:
         fact_response = primary_client.generate_json(
             FACT_SYSTEM_PROMPT,
             {
                 "task": "verify_facts",
                 "transcript": card["transcript"],
                 "offline_translation": card.get("offline_translation"),
-                "facts": card.get("facts", []),
+                "facts": scored_facts,
                 "terminology": card.get("terminology", []),
                 "si_translation": translation,
                 "tgt_lang": card.get("tgt_lang"),
@@ -69,7 +70,7 @@ def evaluate_with_agents(
         )
         traces.append(_trace("verify_facts", fact_response))
         fact_verdicts = _normalize_verdicts(
-            card.get("facts", []), fact_response.data, "fact_id", "ambiguous", translation
+            scored_facts, fact_response.data, "fact_id", "ambiguous", translation
         )
 
     prop_response = primary_client.generate_json(
@@ -221,10 +222,21 @@ def _normalize_verdicts(
             confidence = 0.0
             reason = "Rejected: target_span is not verbatim text from the SI translation"
             target_span = None
+        target_context_span = _optional_string(verdict.get("target_context_span"))
+        if target_context_span is not None and target_context_span not in translation:
+            status = "ambiguous"
+            confidence = 0.0
+            reason = "Rejected: target_context_span is not verbatim text from the SI translation"
+            target_context_span = None
+        if target_span is not None and target_context_span is not None and target_span not in target_context_span:
+            status = "ambiguous"
+            confidence = 0.0
+            reason = "Rejected: target_context_span does not contain target_span"
         normalized_item = {
             **source_item,
             "verdict": status,
             "target_span": target_span,
+            "target_context_span": target_context_span,
             "confidence": confidence,
             "reason": reason,
         }

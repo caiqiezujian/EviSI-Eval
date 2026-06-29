@@ -1,6 +1,8 @@
 import json
 
 from evisi_eval.agent_aggregator import aggregate_agent_result
+from evisi_eval.agent_card_builder import build_agent_card, normalize_card
+from evisi_eval.agent_evaluator import evaluate_with_agents
 from evisi_eval.agent_pipeline import run_agent_pipeline
 from evisi_eval.io_utils import write_jsonl
 from evisi_eval.llm_provider import ScriptedLLMClient, parse_json_object
@@ -246,3 +248,237 @@ def test_linked_fact_only_proposition_is_not_double_penalized():
     assert prop["duplicate_suppressed"] is True
     assert prop["deduction"] == 0
     assert result["dimension_scores"]["core_proposition_coverage"]["score"] == 35
+
+
+def test_occurrence_layout_preserves_importance_and_normalizes_sentences():
+    transcript = "Mark answered. Mark left."
+    raw = {
+        "sentences": [
+            {
+                "sentence_id": "S1",
+                "sentence_text": "Mark answered.",
+                "entity_occurrences": [
+                    {
+                        "occurrence_id": "E1",
+                        "sentence_id": "S1",
+                        "sentence_text": "Mark answered.",
+                        "entity_text": "Mark",
+                        "normalized_entity": "Mark",
+                        "entity_type": "PERSON",
+                        "importance": "high",
+                        "is_score_anchor": True,
+                        "role_hint": "subject",
+                        "extraction_reason": "subject identity",
+                    }
+                ],
+            },
+            {
+                "sentence_id": "S2",
+                "sentence_text": "Mark left.",
+                "entity_occurrences": [
+                    {
+                        "occurrence_id": "E2",
+                        "sentence_id": "S2",
+                        "sentence_text": "Mark left.",
+                        "entity_text": "Mark",
+                        "normalized_entity": "Mark",
+                        "entity_type": "PERSON",
+                        "importance": "low",
+                        "is_score_anchor": False,
+                        "role_hint": "subject",
+                        "extraction_reason": "background repeat",
+                    }
+                ],
+            },
+        ],
+        "propositions": [
+            {
+                "prop_id": "p1",
+                "source_span": "Mark answered.",
+                "canonical_meaning": "Mark answered",
+                "importance": 2,
+                "required": True,
+                "linked_entities": ["E1"],
+                "extraction_confidence": 1.0,
+            }
+        ],
+        "relations": [],
+        "terminology": [],
+        "allowed_omissions": [],
+        "forbidden_losses": [],
+    }
+    card, issues = normalize_card(raw, {"sample_id": "s1", "transcript": transcript})
+    assert issues == []
+    assert [fact["importance_numeric"] for fact in card["facts"]] == [3, 1]
+    assert [item["occurrence_id"] for item in card["entity_occurrences"]] == ["E1", "E2"]
+    assert card["global_entity_inventory"][0]["occurrence_ids"] == ["E1", "E2"]
+
+
+def test_occurrence_verifier_sends_only_score_anchors():
+    card = {
+        "sample_id": "s1",
+        "transcript": "Mark answered. Mark left.",
+        "offline_translation": "马克回答了。马克离开了。",
+        "tgt_lang": "zh",
+        "facts": [
+            {"fact_id": "E1", "source_span": "Mark", "importance": "high", "importance_numeric": 3, "is_score_anchor": True},
+            {"fact_id": "E2", "source_span": "Mark", "importance": "low", "importance_numeric": 1, "is_score_anchor": False},
+        ],
+        "propositions": [
+            {"prop_id": "p1", "source_span": "Mark answered.", "canonical_meaning": "Mark answered", "importance": 2, "required": True}
+        ],
+        "relations": [],
+        "terminology": [],
+        "allowed_omissions": [],
+        "metadata": {},
+    }
+    client = ScriptedLLMClient(
+        [
+            {"verdicts": [{"fact_id": "E1", "verdict": "equivalent", "target_span": "马克", "target_context_span": "马克回答了。", "confidence": 1.0, "reason": "matched"}]},
+            {"verdicts": [{"prop_id": "p1", "verdict": "covered", "target_span": "马克回答了。", "error_scope": "none", "confidence": 1.0, "reason": "covered"}]},
+            {"issues": []},
+        ]
+    )
+    result = evaluate_with_agents(card, "hidden", "马克回答了。马克离开了。", client)
+    assert [item["fact_id"] for item in result["fact_verdicts"]] == ["E1"]
+    assert [item["fact_id"] for item in client.calls[0]["payload"]["facts"]] == ["E1"]
+
+
+def test_semantic_importance_controls_fact_budget_and_criticality():
+    raw = {
+        "sample_id": "s1",
+        "system_name": "sys",
+        "metadata": {},
+        "fact_verdicts": [
+            {
+                "fact_id": "E1",
+                "type": "person",
+                "source_span": "Mark",
+                "importance": "high",
+                "importance_numeric": 3,
+                "verdict": "incorrect",
+                "target_span": "约翰",
+                "confidence": 1.0,
+                "reason": "wrong person",
+                "error_ref": "fact_id:E1",
+                "review": {"decision": "valid", "confidence": 1.0, "reason": "confirmed"},
+            },
+            {
+                "fact_id": "E2",
+                "type": "key_concept",
+                "source_span": "background",
+                "importance": "low",
+                "importance_numeric": 1,
+                "verdict": "incorrect",
+                "target_span": "背景",
+                "confidence": 1.0,
+                "reason": "minor mismatch",
+                "error_ref": "fact_id:E2",
+                "review": {"decision": "valid", "confidence": 1.0, "reason": "confirmed"},
+            },
+        ],
+        "proposition_verdicts": [],
+        "relation_verdicts": [],
+        "target_quality_issues": [],
+    }
+    result = aggregate_agent_result(raw)
+    facts = result["fact_verdicts"]
+    assert facts[0]["item_budget"] == 30
+    assert facts[0]["severity"] == "critical"
+    assert facts[1]["item_budget"] == 10
+    assert facts[1]["severity"] == "minor"
+    assert result["score_cap"] == 60
+
+
+def test_non_verbatim_occurrence_is_never_scored():
+    transcript = "Round-robin um um load balancing scheme."
+    raw = {
+        "sentences": [
+            {
+                "sentence_id": "S1",
+                "sentence_text": transcript,
+                "entity_occurrences": [
+                    {
+                        "occurrence_id": "E1",
+                        "sentence_id": "S1",
+                        "sentence_text": transcript,
+                        "entity_text": "Round-robin load balancing scheme",
+                        "normalized_entity": "round-robin load balancing",
+                        "entity_type": "TECH_TERM",
+                        "importance": "high",
+                        "is_score_anchor": True,
+                        "role_hint": "term",
+                        "extraction_reason": "core term",
+                    }
+                ],
+            }
+        ],
+        "propositions": [],
+        "relations": [],
+        "terminology": [],
+        "allowed_omissions": [],
+        "forbidden_losses": [],
+    }
+    card, issues = normalize_card(raw, {"sample_id": "s1", "transcript": transcript})
+    assert card["facts"] == []
+    assert any("entity_text not found" in issue for issue in issues)
+
+
+def test_card_builder_repairs_non_verbatim_occurrence():
+    transcript = "Round-robin um um load balancing scheme."
+    base_sentence = {
+        "sentence_id": "S1",
+        "sentence_text": transcript,
+    }
+    initial = {
+        "sentences": [
+            {
+                **base_sentence,
+                "entity_occurrences": [
+                    {
+                        "occurrence_id": "E1",
+                        **base_sentence,
+                        "entity_text": "Round-robin load balancing scheme",
+                        "normalized_entity": "round-robin load balancing",
+                        "entity_type": "TECH_TERM",
+                        "importance": "high",
+                        "is_score_anchor": True,
+                        "role_hint": "term",
+                        "extraction_reason": "core term",
+                    }
+                ],
+            }
+        ],
+        "propositions": [],
+        "relations": [],
+        "terminology": [],
+        "allowed_omissions": [],
+        "forbidden_losses": [],
+    }
+    repaired = {
+        **initial,
+        "sentences": [
+            {
+                **base_sentence,
+                "entity_occurrences": [
+                    {
+                        "occurrence_id": "E1",
+                        **base_sentence,
+                        "entity_text": "Round-robin",
+                        "normalized_entity": "round-robin load balancing",
+                        "entity_type": "TECH_TERM",
+                        "importance": "high",
+                        "is_score_anchor": True,
+                        "role_hint": "term",
+                        "extraction_reason": "core term",
+                    }
+                ],
+            }
+        ],
+    }
+    client = ScriptedLLMClient([initial, repaired])
+    card = build_agent_card({"sample_id": "s1", "transcript": transcript}, client)
+    assert card["facts"][0]["source_span"] == "Round-robin"
+    assert card["metadata"]["repair_attempted"] is True
+    assert card["metadata"]["review_required"] is True  # fallback proposition still needs review
+    assert len(client.calls) == 2

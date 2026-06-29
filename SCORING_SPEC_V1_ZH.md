@@ -61,6 +61,8 @@
 
 所有 `source_span` 必须逐字存在于 transcript。关系引用的 proposition ID 必须存在。卡片生成后计算 SHA-256 `card_hash`，正式 benchmark 应人工审核后将 `card_status` 冻结。
 
+若句子、实体、命题、关系 cue 或术语不是原文中的连续逐字跨度，本地验证器会将对应条目剔除，并触发一次 Card Repair Agent。Repair Agent 只接收原文、初始卡片和验证错误，仍看不到系统译文。修复结果必须再次通过同一确定性验证；仍有错误时卡片保持 `review_required=true`。
+
 ## 4. 四维结构与权重
 
 | 维度 | 权重 | 核心问题 |

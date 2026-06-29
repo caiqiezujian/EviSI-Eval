@@ -124,7 +124,7 @@ def _score_weighted_items(
             "reason": "No source item of this dimension exists in the frozen card",
         }, [], []
 
-    importance_total = sum(_importance(item.get("importance")) for item in items)
+    importance_total = sum(_item_importance(item) for item in items)
     scored = []
     errors = []
     review_queue = []
@@ -132,7 +132,7 @@ def _score_weighted_items(
     coefficients = STATUS_COEFFICIENTS[dimension]
     for item in items:
         current = dict(item)
-        importance = _importance(current.get("importance"))
+        importance = _item_importance(current)
         budget = weight * importance / importance_total
         status = str(current.get("verdict") or "ambiguous").strip().lower()
         coefficient = coefficients.get(status, 0.0)
@@ -236,10 +236,10 @@ def _accept_error(item: dict[str, Any], coefficient: float) -> tuple[bool, bool,
             return False, False, "Candidate error rejected by reviewer"
         if decision == "valid" and review_confidence >= MIN_AUTO_CONFIDENCE:
             return True, False, "Candidate error confirmed by reviewer"
-        if decision == "uncertain" and confidence >= HIGH_CONFIDENCE and _importance(item.get("importance")) < 3:
+        if decision == "uncertain" and confidence >= HIGH_CONFIDENCE and _item_importance(item) < 3:
             return True, True, "High-confidence non-critical error accepted; reviewer remained uncertain"
         return False, True, "Candidate error requires stronger review evidence"
-    if confidence >= HIGH_CONFIDENCE and _importance(item.get("importance")) < 3:
+    if confidence >= HIGH_CONFIDENCE and _item_importance(item) < 3:
         return True, True, "High-confidence non-critical error accepted without secondary review"
     return False, True, "Error is low-confidence or critical and requires review"
 
@@ -256,7 +256,7 @@ def _error_record(dimension: str, item: dict[str, Any], id_key: str) -> dict[str
         "error_type": error_type,
         "item_type": item.get("type") or item.get("error_type"),
         "severity": item.get("severity", "minor"),
-        "importance": _importance(item.get("importance")),
+        "importance": _item_importance(item),
         "source_span": source_span,
         "target_span": item.get("target_span"),
         "confidence": _confidence(item.get("confidence")),
@@ -292,9 +292,14 @@ def _cap_candidates(errors: list[dict[str, Any]]) -> list[dict[str, Any]]:
         limit = None
         if dimension == "fact_accuracy":
             fact_type = str(error.get("item_type") or "")
-            if kind == "incorrect" and fact_type in {"entity", "term"}:
+            if kind == "incorrect" and fact_type in {
+                "entity", "person", "org", "gpe", "location", "product", "event",
+                "law_policy", "project",
+            }:
                 reason, limit = "confirmed_critical_entity_or_term_error", 60.0
-            elif kind == "incorrect" and fact_type in {"number", "percentage", "money", "unit", "date_time"}:
+            elif kind == "incorrect" and fact_type in {
+                "number", "percent", "percentage", "money", "unit", "time", "date", "date_time",
+            }:
                 reason, limit = "confirmed_critical_value_error", 70.0
             elif kind == "incorrect" and fact_type in {"polarity", "direction", "scope", "modality"}:
                 reason, limit = "confirmed_critical_boundary_or_stance_error", 60.0
@@ -332,11 +337,22 @@ def _result_key(dimension: str) -> str:
 
 
 def _importance(value: Any) -> int:
+    if isinstance(value, str):
+        semantic = {"high": 3, "medium": 2, "low": 1}
+        normalized = value.strip().lower()
+        if normalized in semantic:
+            return semantic[normalized]
     try:
         parsed = int(value)
     except (TypeError, ValueError):
         return 1
     return min(3, max(1, parsed))
+
+
+def _item_importance(item: dict[str, Any]) -> int:
+    if "importance_numeric" in item:
+        return _importance(item.get("importance_numeric"))
+    return _importance(item.get("importance"))
 
 
 def _confidence(value: Any) -> float:

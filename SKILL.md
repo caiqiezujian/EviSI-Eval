@@ -24,7 +24,7 @@ copy local_secrets.py.example local_secrets.py
 EVISI_PRIMARY_PROVIDER = "deepseek"
 EVISI_REVIEW_PROVIDER = "deepseek"
 DEEPSEEK_API_KEY = "填写本地密钥"
-DEEPSEEK_MODEL = "deepseek-chat"
+DEEPSEEK_MODEL = "deepseek-v4-pro"  # 2026-04-24 release, 1.6T/49B MoE
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 ```
 
@@ -61,6 +61,8 @@ python run_agent.py `
 ```
 
 该命令依次执行：构卡、事实核验、命题核验、关系核验、目标语检查、错误复核、确定性聚合和报告导出。
+
+构卡阶段若发现非逐字 source span、错误引用或非法类型，会自动执行一次 Card Repair，再重新验证。修复后仍有问题的卡片必须人工审查。
 
 Pass gate：
 

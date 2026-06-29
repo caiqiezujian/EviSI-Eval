@@ -8,7 +8,7 @@ from .llm_provider import LLMClient
 from .models import FACT_TYPES
 
 
-CARD_PROMPT_VERSION = "card_builder_v1.1"
+CARD_PROMPT_VERSION = "card_builder_v1.2"
 
 CARD_SYSTEM_PROMPT = """You are the Evaluation Card Builder for a simultaneous-interpretation benchmark.
 
@@ -51,7 +51,7 @@ sentence_id：该实体来自哪一句，例如 S1、S2。
 sentence_text：该实体所在的完整源文句子。
 entity_text：实体在原文中的表面形式，必须尽量使用原文原词或原短语。
 normalized_entity：规范化实体名称。如果不需要规范化，则与 entity_text 相同。如果是代词或简称，应写出它指代或对应的完整实体。
-entity_type：实体类型，只能从以下类型中选择：PERSON、ORG、GPE、LOCATION、TIME、DATE、NUMBER、MONEY、PERCENT、PRODUCT、EVENT、LAW_POLICY、PROJECT、TECH_TERM、DOMAIN_TERM、KEY_CONCEPT、OTHER。
+entity_type：事实锚点类型，只能从以下类型中选择：PERSON、ORG、GPE、LOCATION、TIME、DATE、NUMBER、MONEY、PERCENT、UNIT、PRODUCT、EVENT、LAW_POLICY、PROJECT、TECH_TERM、DOMAIN_TERM、KEY_CONCEPT、POLARITY、DIRECTION、SCOPE、MODALITY、OTHER。除实体外，还必须抽取会改变判断的否定、方向、范围和模态边界，例如 not、increase/decrease、only/at least、may/must。
 importance：实体重要性，只能取 high、medium、low。high 表示该实体对句子核心意思或事实判断非常重要；medium 表示该实体对理解有帮助但不是最核心；low 表示该实体属于背景性、修饰性或可弱化信息。
 is_score_anchor：是否建议作为后续打分锚点，取 true 或 false。只有对同传译文质量判断有实际价值的实体才设为 true。
 role_hint：该实体在句子中的大致作用，只能从以下类型中选择：subject、object、time、place、quantity、topic、term、modifier、reference、other。注意这只是辅助角色提示，不是行为分析。
@@ -81,6 +81,7 @@ Every source_span, sentence_text, and source_cue must be copied verbatim from th
 - Better to extract fewer entities with real evaluation value than to dump every noun.
 - linked_entities in propositions must reference existing occurrence_ids.
 - forbidden_losses ref_id must reference an existing entity_occurrence / proposition / relation.
+- entity_text must be a contiguous verbatim span. Never remove fillers from inside the span. For example, if the source says "Round-robin um um load balancing scheme", either copy that exact span or choose a smaller exact span such as "Round-robin"; never output the cleaned non-verbatim phrase "Round-robin load balancing scheme" as entity_text.
 
 ===== Required output shape =====
 
@@ -97,7 +98,7 @@ Every source_span, sentence_text, and source_cue must be copied verbatim from th
           "sentence_text": "<same verbatim sentence>",
           "entity_text": "<surface form from source>",
           "normalized_entity": "<canonical form, or entity_text if no normalization>",
-          "entity_type": "<PERSON|ORG|GPE|LOCATION|TIME|DATE|NUMBER|MONEY|PERCENT|PRODUCT|EVENT|LAW_POLICY|PROJECT|TECH_TERM|DOMAIN_TERM|KEY_CONCEPT|OTHER>",
+          "entity_type": "<PERSON|ORG|GPE|LOCATION|TIME|DATE|NUMBER|MONEY|PERCENT|UNIT|PRODUCT|EVENT|LAW_POLICY|PROJECT|TECH_TERM|DOMAIN_TERM|KEY_CONCEPT|POLARITY|DIRECTION|SCOPE|MODALITY|OTHER>",
           "importance": "high|medium|low",
           "is_score_anchor": true|false,
           "role_hint": "subject|object|time|place|quantity|topic|term|modifier|reference|other",
@@ -155,6 +156,9 @@ Every source_span, sentence_text, and source_cue must be copied verbatim from th
 
 Return JSON only. No commentary, no Markdown, no code fence."""
 
+CARD_REPAIR_SYSTEM_PROMPT = """You repair an Evaluation Card that failed deterministic validation.
+Return the complete corrected card in the same v1.1 JSON shape. Use the supplied transcript as the only source of source spans. Every sentence_text, entity_text, proposition source_span, relation source_cue, terminology source_term, and allowed omission source_span must be a contiguous verbatim substring of the transcript. Preserve valid IDs and links when possible. Remove an item rather than inventing a span. You never see any tested system output. Do not score. Return JSON only."""
+
 
 def build_agent_card(sample: dict[str, Any], client: LLMClient) -> dict[str, Any]:
     transcript = str(sample.get("transcript") or sample.get("source_text") or "").strip()
@@ -178,12 +182,35 @@ def build_agent_card(sample: dict[str, Any], client: LLMClient) -> dict[str, Any
     if not isinstance(raw_card, dict):
         raise ValueError("Card builder response must contain a JSON object")
     card, issues = normalize_card(raw_card, sample)
+    initial_issues = list(issues)
+    repair_response = None
+    if issues:
+        repair_response = client.generate_json(
+            CARD_REPAIR_SYSTEM_PROMPT,
+            {
+                "task": "repair_evaluation_card",
+                "sample_id": sample_id,
+                "transcript": transcript,
+                "offline_translation": sample.get("offline_translation"),
+                "validation_issues": issues,
+                "card_to_repair": raw_card,
+            },
+            task="repair_evaluation_card",
+        )
+        repaired_raw = repair_response.data.get("evaluation_card", repair_response.data)
+        if isinstance(repaired_raw, dict):
+            repaired_card, repaired_issues = normalize_card(repaired_raw, sample)
+            if len(repaired_issues) <= len(issues):
+                card, issues = repaired_card, repaired_issues
     card["metadata"] = {
         "schema_version": "1.1.0",
         "prompt_version": CARD_PROMPT_VERSION,
         "builder_provider": response.provider,
         "builder_model": response.model,
         "builder_request_id": response.request_id,
+        "repair_attempted": repair_response is not None,
+        "repair_request_id": repair_response.request_id if repair_response else None,
+        "initial_validation_issues": initial_issues,
         "card_status": "draft",
         "review_required": bool(issues),
         "validation_issues": issues,
@@ -202,9 +229,20 @@ def normalize_card(raw: dict[str, Any], sample: dict[str, Any]) -> tuple[dict[st
 
     facts: list[dict[str, Any]] = []
     if use_occurrence_layout:
+        seen_sentence_ids: set[str] = set()
         for sentence in raw_sentences:
             sentence_id = str(sentence.get("sentence_id") or "").strip()
             sentence_text = str(sentence.get("sentence_text") or "").strip()
+            if not sentence_id:
+                issues.append("sentences[] missing sentence_id")
+            elif sentence_id in seen_sentence_ids:
+                issues.append(f"duplicate sentence_id={sentence_id!r}")
+            seen_sentence_ids.add(sentence_id)
+            sentence_is_verbatim = bool(sentence_text and sentence_text in transcript)
+            if not sentence_text:
+                issues.append(f"{sentence_id or 'unknown sentence'} missing sentence_text")
+            elif not sentence_is_verbatim:
+                issues.append(f"{sentence_id} sentence_text is not verbatim transcript text")
             for occ_index, item in enumerate(_list(sentence.get("entity_occurrences")), 1):
                 entity_type = str(item.get("entity_type") or "OTHER").strip().upper()
                 if entity_type not in _ENTITY_TYPES:
@@ -216,6 +254,19 @@ def normalize_card(raw: dict[str, Any], sample: dict[str, Any]) -> tuple[dict[st
                 if not entity_text:
                     issues.append(f"{sentence_id}/entity_occurrences[{occ_index}] missing entity_text; item dropped")
                     continue
+                item_sentence_id = str(item.get("sentence_id") or sentence_id).strip()
+                item_sentence_text = str(item.get("sentence_text") or sentence_text).strip()
+                if item_sentence_id != sentence_id:
+                    issues.append(
+                        f"{sentence_id}/entity_occurrences[{occ_index}] sentence_id disagrees with parent sentence"
+                    )
+                if item_sentence_text != sentence_text:
+                    issues.append(
+                        f"{sentence_id}/entity_occurrences[{occ_index}] sentence_text disagrees with parent sentence"
+                    )
+                entity_is_verbatim = bool(
+                    sentence_is_verbatim and entity_text in sentence_text and entity_text in transcript
+                )
                 if sentence_text and entity_text not in sentence_text:
                     issues.append(
                         f"{sentence_id}/entity_occurrences[{occ_index}] entity_text not found in sentence_text"
@@ -224,6 +275,8 @@ def normalize_card(raw: dict[str, Any], sample: dict[str, Any]) -> tuple[dict[st
                     issues.append(
                         f"{sentence_id}/entity_occurrences[{occ_index}] entity_text not found in transcript"
                     )
+                if not entity_is_verbatim:
+                    continue
                 semantic_importance = _semantic_importance(item.get("importance"))
                 numeric_importance = _semantic_to_numeric(semantic_importance)
                 is_anchor = bool(item.get("is_score_anchor", semantic_importance != "low"))
@@ -248,6 +301,12 @@ def normalize_card(raw: dict[str, Any], sample: dict[str, Any]) -> tuple[dict[st
                         "extraction_confidence": _confidence(item.get("extraction_confidence"), 0.8),
                     }
                 )
+        fact_ids_before_dedupe = [item["fact_id"] for item in facts]
+        duplicate_fact_ids = sorted(
+            {item_id for item_id in fact_ids_before_dedupe if fact_ids_before_dedupe.count(item_id) > 1}
+        )
+        if duplicate_fact_ids:
+            issues.append(f"duplicate occurrence_id values normalized: {duplicate_fact_ids}")
         facts = _dedupe_ids(facts, "fact_id", "E")
     else:
         for index, item in enumerate(_list(raw.get("facts")), 1):
@@ -293,6 +352,7 @@ def normalize_card(raw: dict[str, Any], sample: dict[str, Any]) -> tuple[dict[st
             continue
         if source_span not in transcript:
             issues.append(f"propositions[{index}] source_span is not verbatim transcript text")
+            continue
         linked_entities = [x for x in _strings(item.get("linked_entities")) if x in fact_ids]
         linked_facts = [x for x in _strings(item.get("linked_facts")) if x in fact_ids]
         propositions.append(
@@ -338,6 +398,7 @@ def normalize_card(raw: dict[str, Any], sample: dict[str, Any]) -> tuple[dict[st
         cues = _strings(item.get("source_cues"))
         if any(cue not in transcript for cue in cues):
             issues.append(f"relations[{index}] includes a non-verbatim source cue")
+            continue
         relations.append(
             {
                 "relation_id": str(item.get("relation_id") or f"r_{index:03d}"),
@@ -356,6 +417,9 @@ def normalize_card(raw: dict[str, Any], sample: dict[str, Any]) -> tuple[dict[st
     for index, item in enumerate(_list(raw.get("terminology")), 1):
         source_term = str(item.get("source_term") or "").strip()
         if not source_term:
+            continue
+        if source_term not in transcript:
+            issues.append(f"terminology[{index}] source_term is not verbatim transcript text; item dropped")
             continue
         terminology.append(
             {
@@ -383,27 +447,26 @@ def normalize_card(raw: dict[str, Any], sample: dict[str, Any]) -> tuple[dict[st
         "forbidden_losses": _simple_records(raw.get("forbidden_losses"), "kind", "ref_id", "reason"),
     }
     if use_occurrence_layout:
+        facts_by_sentence: dict[str, list[dict[str, Any]]] = {}
+        for fact in facts:
+            facts_by_sentence.setdefault(str(fact.get("sentence_id") or ""), []).append(fact)
         normalized_sentences = []
         for sentence in raw_sentences:
+            sentence_id = str(sentence.get("sentence_id") or "").strip()
             normalized_sentences.append(
                 {
-                    "sentence_id": str(sentence.get("sentence_id") or "").strip(),
+                    "sentence_id": sentence_id,
                     "sentence_text": str(sentence.get("sentence_text") or "").strip(),
-                    "entity_occurrences": _list(sentence.get("entity_occurrences")),
+                    "entity_occurrences": [
+                        _fact_to_occurrence(fact) for fact in facts_by_sentence.get(sentence_id, [])
+                    ],
                 }
             )
         card["sentences"] = normalized_sentences
         card["entity_occurrences"] = [
             occ for sentence in normalized_sentences for occ in _list(sentence.get("entity_occurrences"))
         ]
-        card["global_entity_inventory"] = _simple_records(
-            raw.get("global_entity_inventory"),
-            "normalized_entity",
-            "entity_type",
-            "occurs_in_sentences",
-            "occurrence_ids",
-            "note",
-        )
+        card["global_entity_inventory"] = _build_global_inventory(facts)
     return card, issues
 
 
@@ -453,7 +516,11 @@ def _dedupe_ids(items: list[dict[str, Any]], key: str, prefix: str) -> list[dict
     for index, item in enumerate(items, 1):
         item_id = str(item.get(key) or f"{prefix}_{index:03d}")
         if item_id in seen:
-            item_id = f"{prefix}_{index:03d}"
+            candidate_index = index
+            item_id = f"{prefix}_{candidate_index:03d}"
+            while item_id in seen:
+                candidate_index += 1
+                item_id = f"{prefix}_{candidate_index:03d}"
         item[key] = item_id
         seen.add(item_id)
     return items
@@ -478,6 +545,7 @@ _ENTITY_TYPES = {
     "NUMBER",
     "MONEY",
     "PERCENT",
+    "UNIT",
     "PRODUCT",
     "EVENT",
     "LAW_POLICY",
@@ -485,8 +553,51 @@ _ENTITY_TYPES = {
     "TECH_TERM",
     "DOMAIN_TERM",
     "KEY_CONCEPT",
+    "POLARITY",
+    "DIRECTION",
+    "SCOPE",
+    "MODALITY",
     "OTHER",
 }
+
+
+def _fact_to_occurrence(fact: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "occurrence_id": fact["fact_id"],
+        "sentence_id": fact.get("sentence_id", ""),
+        "sentence_text": fact.get("sentence_text", ""),
+        "entity_text": fact.get("source_span", ""),
+        "normalized_entity": fact.get("normalized_entity") or str(fact.get("canonical_value", "")),
+        "entity_type": fact.get("entity_type", "OTHER"),
+        "importance": fact.get("importance", "medium"),
+        "is_score_anchor": bool(fact.get("is_score_anchor", True)),
+        "role_hint": fact.get("role_hint", "other"),
+        "extraction_reason": fact.get("notes") or "unspecified",
+    }
+
+
+def _build_global_inventory(facts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    groups: dict[tuple[str, str], dict[str, Any]] = {}
+    for fact in facts:
+        key = (
+            str(fact.get("normalized_entity") or fact.get("canonical_value") or fact.get("source_span")),
+            str(fact.get("entity_type") or "OTHER"),
+        )
+        group = groups.setdefault(
+            key,
+            {
+                "normalized_entity": key[0],
+                "entity_type": key[1],
+                "occurs_in_sentences": [],
+                "occurrence_ids": [],
+                "note": "Auxiliary index only. Sentence-level occurrences are authoritative.",
+            },
+        )
+        sentence_id = str(fact.get("sentence_id") or "")
+        if sentence_id and sentence_id not in group["occurs_in_sentences"]:
+            group["occurs_in_sentences"].append(sentence_id)
+        group["occurrence_ids"].append(fact["fact_id"])
+    return list(groups.values())
 
 
 def _semantic_importance(value: Any) -> str:

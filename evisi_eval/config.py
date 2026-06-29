@@ -20,7 +20,11 @@ _DEFAULTS: dict[str, dict[str, str]] = {
     "deepseek": {
         "protocol": "openai_compatible",
         "base_url": "https://api.deepseek.com",
-        "model": "deepseek-chat",
+        # Default model: DeepSeek-V4-Pro (2026-04-24, 1.6T/49B MoE).
+        # V3.x → V4 migration: deepseek-chat alias will be phased out within
+        # 3 months, after which V4-Pro becomes the implicit default.
+        # Override per-run via DEEPSEEK_MODEL env var or local_secrets.py.
+        "model": "deepseek-v4-pro",
     },
     "openai": {
         "protocol": "openai_compatible",
