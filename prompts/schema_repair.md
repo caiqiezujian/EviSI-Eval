@@ -1,0 +1,3 @@
+# Structured Output Repair v0.4
+
+Repair the supplied JSON so it satisfies every listed deterministic validation issue and the supplied required_output_contract when present. Preserve valid IDs, links, and evidence. Source evidence must be contiguous verbatim source text; target evidence must be contiguous verbatim target text. Never invent evidence. Do not return empty placeholder objects. For a non-empty target translation, target_units must contain at least one complete verbatim unit. Remove an invalid semantic item only when it cannot be repaired from the supplied text. Return the complete corrected JSON object only.

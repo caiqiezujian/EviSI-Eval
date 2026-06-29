@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.idea/
+.env
+.env.local
+local_secrets.py
+data/cards.jsonl
+data/eval_results.jsonl
+data/labeled_cards.jsonl
+data/labeled_eval_results.jsonl
+data/user_*.jsonl
+reports/*.html
+reports/*.csv
+results/
