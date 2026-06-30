@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1536 512" width="1536" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0e27"/>
+      <stop offset="50%" style="stop-color:#0d1b3e"/>
+      <stop offset="100%" style="stop-color:#111a3a"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:0.8"/>
+      <stop offset="100%" style="stop-color:#0066ff;stop-opacity:0.3"/>
+    </linearGradient>
+    <filter id="glow-filter">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft-glow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1536" height="512" fill="url(#bg)"/>
+
+  <!-- Grid lines (subtle) -->
+  <g stroke="#1e3a6e" stroke-width="0.5" opacity="0.3">
+    <line x1="0" y1="128" x2="1536" y2="128"/>
+    <line x1="0" y1="256" x2="1536" y2="256"/>
+    <line x1="0" y1="384" x2="1536" y2="384"/>
+    <line x1="256" y1="0" x2="256" y2="512"/>
+    <line x1="512" y1="0" x2="512" y2="512"/>
+    <line x1="768" y1="0" x2="768" y2="512"/>
+    <line x1="1024" y1="0" x2="1024" y2="512"/>
+    <line x1="1280" y1="0" x2="1280" y2="512"/>
+  </g>
+
+  <!-- Decorative circles -->
+  <circle cx="200" cy="256" r="180" fill="none" stroke="#00d4ff" stroke-width="0.5" opacity="0.1"/>
+  <circle cx="200" cy="256" r="140" fill="none" stroke="#00d4ff" stroke-width="0.5" opacity="0.15"/>
+  <circle cx="200" cy="256" r="100" fill="none" stroke="#00d4ff" stroke-width="0.5" opacity="0.2"/>
+  <circle cx="1336" cy="256" r="180" fill="none" stroke="#0066ff" stroke-width="0.5" opacity="0.1"/>
+  <circle cx="1336" cy="256" r="140" fill="none" stroke="#0066ff" stroke-width="0.5" opacity="0.15"/>
+
+  <!-- Flow lines (data pipeline) -->
+  <g fill="none" stroke="url(#glow)" stroke-width="2" opacity="0.6">
+    <path d="M 280 256 Q 350 200 420 256 Q 490 312 560 256" filter="url(#glow-filter)"/>
+    <path d="M 560 256 Q 620 200 680 256 Q 740 312 800 256" filter="url(#glow-filter)"/>
+    <path d="M 800 256 Q 860 200 920 256 Q 980 312 1040 256" filter="url(#glow-filter)"/>
+    <path d="M 1040 256 Q 1100 200 1160 256 Q 1220 312 1280 256" filter="url(#glow-filter)"/>
+  </g>
+
+  <!-- Dots along flow lines -->
+  <g fill="#00d4ff" opacity="0.8">
+    <circle cx="320" cy="238" r="3"/>
+    <circle cx="380" cy="248" r="2"/>
+    <circle cx="440" cy="260" r="3"/>
+    <circle cx="500" cy="248" r="2"/>
+    <circle cx="600" cy="238" r="3"/>
+    <circle cx="660" cy="248" r="2"/>
+    <circle cx="720" cy="260" r="3"/>
+    <circle cx="780" cy="248" r="2"/>
+    <circle cx="840" cy="238" r="3"/>
+    <circle cx="900" cy="248" r="2"/>
+    <circle cx="960" cy="260" r="3"/>
+    <circle cx="1020" cy="248" r="2"/>
+    <circle cx="1080" cy="238" r="3"/>
+    <circle cx="1140" cy="248" r="2"/>
+    <circle cx="1200" cy="260" r="3"/>
+    <circle cx="1260" cy="248" r="2"/>
+  </g>
+
+  <!-- Node 1: Source -->
+  <g transform="translate(120, 196)" filter="url(#glow-filter)">
+    <rect x="0" y="0" width="80" height="120" rx="8" fill="#0d1b3e" stroke="#00d4ff" stroke-width="2"/>
+    <rect x="4" y="4" width="72" height="112" rx="6" fill="#0a1628"/>
+    <text x="40" y="45" text-anchor="middle" fill="#00d4ff" font-size="10" font-family="monospace">SOURCE</text>
+    <text x="40" y="62" text-anchor="middle" fill="#00d4ff" font-size="10" font-family="monospace">TEXT</text>
+    <rect x="12" y="75" width="56" height="3" rx="1.5" fill="#00d4ff" opacity="0.5"/>
+    <rect x="12" y="82" width="40" height="3" rx="1.5" fill="#00d4ff" opacity="0.3"/>
+    <rect x="12" y="89" width="50" height="3" rx="1.5" fill="#00d4ff" opacity="0.4"/>
+    <rect x="12" y="96" width="35" height="3" rx="1.5" fill="#00d4ff" opacity="0.2"/>
+  </g>
+
+  <!-- Node 2: SourceCardAgent -->
+  <g transform="translate(340, 176)" filter="url(#glow-filter)">
+    <rect x="0" y="0" width="120" height="160" rx="8" fill="#0d1b3e" stroke="#00d4ff" stroke-width="2"/>
+    <rect x="4" y="4" width="112" height="152" rx="6" fill="#0a1628"/>
+    <text x="60" y="28" text-anchor="middle" fill="#00d4ff" font-size="9" font-family="monospace">SourceCard</text>
+    <text x="60" y="42" text-anchor="middle" fill="#00d4ff" font-size="9" font-family="monospace">Agent</text>
+    <text x="60" y="60" text-anchor="middle" fill="#4a90d9" font-size="8" font-family="monospace">freeze</text>
+    <!-- Mini nodes inside -->
+    <circle cx="30" cy="85" r="12" fill="none" stroke="#00d4ff" stroke-width="1" opacity="0.6"/>
+    <text x="30" y="89" text-anchor="middle" fill="#00d4ff" font-size="7" font-family="monospace">SA</text>
+    <circle cx="60" cy="85" r="12" fill="none" stroke="#00d4ff" stroke-width="1" opacity="0.6"/>
+    <text x="60" y="89" text-anchor="middle" fill="#00d4ff" font-size="7" font-family="monospace">SE</text>
+    <circle cx="90" cy="85" r="12" fill="none" stroke="#00d4ff" stroke-width="1" opacity="0.6"/>
+    <text x="90" y="89" text-anchor="middle" fill="#00d4ff" font-size="7" font-family="monospace">SR</text>
+    <rect x="20" y="105" width="80" height="2" rx="1" fill="#00d4ff" opacity="0.4"/>
+    <rect x="20" y="112" width="60" height="2" rx="1" fill="#00d4ff" opacity="0.3"/>
+    <rect x="20" y="119" width="70" height="2" rx="1" fill="#00d4ff" opacity="0.2"/>
+    <text x="60" y="140" text-anchor="middle" fill="#00d4ff" font-size="7" font-family="monospace">✓ Frozen</text>
+  </g>
+
+  <!-- Node 3: TargetEvidenceAgent -->
+  <g transform="translate(560, 186)" filter="url(#glow-filter)">
+    <rect x="0" y="0" width="120" height="140" rx="8" fill="#0d1b3e" stroke="#00d4ff" stroke-width="2"/>
+    <rect x="4" y="4" width="112" height="132" rx="6" fill="#0a1628"/>
+    <text x="60" y="28" text-anchor="middle" fill="#00d4ff" font-size="9" font-family="monospace">TargetEvidence</text>
+    <text x="60" y="42" text-anchor="middle" fill="#00d4ff" font-size="9" font-family="monospace">Agent</text>
+    <text x="60" y="60" text-anchor="middle" fill="#4a90d9" font-size="8" font-family="monospace">blind extract</text>
+    <circle cx="35" cy="85" r="10" fill="none" stroke="#00d4ff" stroke-width="1" opacity="0.6"/>
+    <text x="35" y="89" text-anchor="middle" fill="#00d4ff" font-size="7" font-family="monospace">TA</text>
+    <circle cx="60" cy="85" r="10" fill="none" stroke="#00d4ff" stroke-width="1" opacity="0.6"/>
+    <text x="60" y="89" text-anchor="middle" fill="#00d4ff" font-size="7" font-family="monospace">TE</text>
+    <circle cx="85" cy="85" r="10" fill="none" stroke="#00d4ff" stroke-width="1" opacity="0.6"/>
+    <text x="85" y="89" text-anchor="middle" fill="#00d4ff" font-size="7" font-family="monospace">TR</text>
+    <rect x="20" y="105" width="80" height="2" rx="1" fill="#00d4ff" opacity="0.4"/>
+    <rect x="20" y="112" width="60" height="2" rx="1" fill="#00d4ff" opacity="0.3"/>
+    <text x="60" y="126" text-anchor="middle" fill="#00d4ff" font-size="7" font-family="monospace">🔒 no source</text>
+  </g>
+
+  <!-- Node 4: JudgeAgent (split) -->
+  <g transform="translate(780, 176)" filter="url(#glow-filter)">
+    <rect x="0" y="0" width="120" height="160" rx="8" fill="#0d1b3e" stroke="#00d4ff" stroke-width="2"/>
+    <rect x="4" y="4" width="112" height="152" rx="6" fill="#0a1628"/>
+    <text x="60" y="28" text-anchor="middle" fill="#00d4ff" font-size="9" font-family="monospace">Judge Agent</text>
+    <line x1="15" y1="40" x2="105" y2="40" stroke="#1e3a6e" stroke-width="0.5"/>
+    <!-- Primary -->
+    <rect x="12" y="48" width="42" height="50" rx="4" fill="#0a1628" stroke="#00d4ff" stroke-width="1" opacity="0.8"/>
+    <text x="33" y="64" text-anchor="middle" fill="#00d4ff" font-size="7" font-family="monospace">Primary</text>
+    <text x="33" y="76" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">judge</text>
+    <text x="33" y="88" text-anchor="middle" fill="#00d4ff" font-size="6" font-family="monospace">verdict</text>
+    <!-- Reviewer -->
+    <rect x="66" y="48" width="42" height="50" rx="4" fill="#0a1628" stroke="#4a90d9" stroke-width="1" opacity="0.8"/>
+    <text x="87" y="64" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">Reviewer</text>
+    <text x="87" y="76" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">blind</text>
+    <text x="87" y="88" text-anchor="middle" fill="#4a90d9" font-size="6" font-family="monospace">review</text>
+    <line x1="15" y1="108" x2="105" y2="108" stroke="#1e3a6e" stroke-width="0.5"/>
+    <text x="60" y="122" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">conflicts?</text>
+    <text x="60" y="136" text-anchor="middle" fill="#00d4ff" font-size="7" font-family="monospace">adjudicate</text>
+    <text x="60" y="148" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">✓ deterministic</text>
+  </g>
+
+  <!-- Node 5: Score -->
+  <g transform="translate(1000, 191)" filter="url(#glow-filter)">
+    <rect x="0" y="0" width="100" height="130" rx="8" fill="#0d1b3e" stroke="#00d4ff" stroke-width="2"/>
+    <rect x="4" y="4" width="92" height="122" rx="6" fill="#0a1628"/>
+    <text x="50" y="28" text-anchor="middle" fill="#00d4ff" font-size="9" font-family="monospace">5D Score</text>
+    <text x="50" y="44" text-anchor="middle" fill="#4a90d9" font-size="8" font-family="monospace">weighted</text>
+    <!-- Score bars -->
+    <rect x="14" y="54" width="8" height="55" rx="2" fill="#00d4ff" opacity="0.2"/>
+    <rect x="14" y="75" width="8" height="34" rx="2" fill="#00d4ff" opacity="0.7"/>
+    <text x="18" y="48" text-anchor="middle" fill="#00d4ff" font-size="5" font-family="monospace">30%</text>
+
+    <rect x="28" y="54" width="8" height="55" rx="2" fill="#4a90d9" opacity="0.2"/>
+    <rect x="28" y="65" width="8" height="44" rx="2" fill="#4a90d9" opacity="0.7"/>
+    <text x="32" y="48" text-anchor="middle" fill="#4a90d9" font-size="5" font-family="monospace">25%</text>
+
+    <rect x="42" y="54" width="8" height="55" rx="2" fill="#00d4ff" opacity="0.15"/>
+    <rect x="42" y="85" width="8" height="24" rx="2" fill="#00d4ff" opacity="0.5"/>
+    <text x="46" y="48" text-anchor="middle" fill="#00d4ff" font-size="5" font-family="monospace">20%</text>
+
+    <rect x="56" y="54" width="8" height="55" rx="2" fill="#4a90d9" opacity="0.15"/>
+    <rect x="56" y="80" width="8" height="29" rx="2" fill="#4a90d9" opacity="0.6"/>
+    <text x="60" y="48" text-anchor="middle" fill="#4a90d9" font-size="5" font-family="monospace">15%</text>
+
+    <rect x="70" y="54" width="8" height="55" rx="2" fill="#00d4ff" opacity="0.1"/>
+    <rect x="70" y="90" width="8" height="19" rx="2" fill="#00d4ff" opacity="0.4"/>
+    <text x="74" y="48" text-anchor="middle" fill="#00d4ff" font-size="5" font-family="monospace">10%</text>
+
+    <text x="50" y="120" text-anchor="middle" fill="#00d4ff" font-size="7" font-family="monospace">85.3</text>
+  </g>
+
+  <!-- Score badge -->
+  <g transform="translate(1200, 206)" filter="url(#soft-glow)">
+    <rect x="0" y="0" width="120" height="100" rx="8" fill="#0d1b3e" stroke="#00d4ff" stroke-width="2"/>
+    <rect x="4" y="4" width="112" height="92" rx="6" fill="#0a1628"/>
+    <text x="60" y="35" text-anchor="middle" fill="#00d4ff" font-size="28" font-weight="bold" font-family="monospace">85.3</text>
+    <text x="60" y="52" text-anchor="middle" fill="#4a90d9" font-size="9" font-family="monospace">── ── ── ──</text>
+    <text x="60" y="68" text-anchor="middle" fill="#00d4ff" font-size="8" font-family="monospace">Anchor  95%</text>
+    <text x="60" y="80" text-anchor="middle" fill="#00d4ff" font-size="8" font-family="monospace">Event    88%</text>
+    <text x="60" y="92" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">provisional</text>
+  </g>
+
+  <!-- Title text overlay -->
+  <text x="768" y="460" text-anchor="middle" fill="#ffffff" font-size="14" font-family="monospace" letter-spacing="4" opacity="0.9">EviSI-EVAL AGENT · EVIDENCE-DRIVEN SIMULTANEOUS INTERPRETATION QUALITY EVALUATION</text>
+  <text x="768" y="480" text-anchor="middle" fill="#4a90d9" font-size="10" font-family="monospace" letter-spacing="2" opacity="0.7">v0.5 · DeepSeek V4 Flash · Protocol evisi_eval_v0.5</text>
+</svg>
