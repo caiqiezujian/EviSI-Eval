@@ -8,11 +8,16 @@ from pathlib import Path
 
 PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
 
-# v0.4 agent prompts (3 agents + 1 repair)
 PROMPT_FILES = {
-    "source_worker": "source_worker.md",
-    "target_worker": "target_worker.md",
-    "main_agent": "main_agent.md",
+    "source_evidence_agent": "source_evidence_agent.md",
+    "alignment_agent": "alignment_agent.md",
+    "target_evidence_agent": "target_evidence_agent.md",
+    "fluency_agent": "fluency_agent.md",
+    "si_expression_agent": "si_expression_agent.md",
+    "primary_judge_agent": "primary_judge_agent.md",
+    "reviewer_agent": "reviewer_agent.md",
+    "adjudicator_agent": "adjudicator_agent.md",
+    "summary_agent": "summary_agent.md",
     "schema_repair": "schema_repair.md",
 }
 

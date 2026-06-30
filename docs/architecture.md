@@ -1,44 +1,75 @@
-# 架构
+# EviSI-Eval v0.5 架构
 
-## 设计边界
+## 1. 设计原则
 
-LLM 负责语义切分、抽取、对齐、判断、表达评价和维度评分。代码只负责输入隔离、调用编排、结构校验、逐字证据校验、无损拼接校验、固定权重计算、断点复用和报告。
+- **冻结基准**：一个源样本只调用一次 SourceEvidenceAgent，所有系统共享同一 `source_card_hash`。
+- **职责分离**：对齐、目标抽取、表达评价、内容判定、复核、裁决、计分和总结分开执行。
+- **信息隔离**：目标证据 Agent 物理拿不到源文；Reviewer 拿不到 Primary 的判定。
+- **证据局部性**：内容判定只能使用直接对齐单元及前后各一个相邻单元，避免全篇碰巧匹配。
+- **语义与数学分离**：LLM 负责语义结构和 verdict，Python 负责验证、覆盖率和分数计算。
+- **失败显式化**：结构修复仍失败则记录 failure，不生成任意语义 fallback。
 
-## 三个对象
-
-- `source_card`：一个源文样本共享一份，包含 source units、anchors、events、relations。
-- `target_eval_card`：一个 `sample_id + system_name` 一份，包含 eval units、目标侧结构和表达问题。
-- `final_result`：包含三类 judgement、全文复核、五维得分、固定加权总分和总结。
-
-## 调用图
+## 2. 执行图
 
 ```text
-source_text
-  -> source units
-  -> source anchors
-  -> source events
-  -> source relations
-  -> source_card
+每个 sample_id：
+  SourceEvidenceAgent(source_text)
+    -> validated frozen source card
 
-source_card + one si_translation
-  -> eval units
-  -> target anchors / events / relations
-  -> fluency / SI expression
-  -> anchor / event / relation judgements
-  -> global review
-  -> five dimension scores
-  -> fixed weighted score
-  -> final summary
+每个 sample_id + system_name：
+  AlignmentAgent(source_units, si_translation)
+    -> eval_units
+  TargetEvidenceAgent(eval_unit_id + target_unit only)
+    -> target anchors/events/relations
+  FluencyAgent(si_translation only)
+    -> fluency issues
+  SIExpressionAgent(source_text + si_translation)
+    -> SI expression issues
+  PrimaryJudgeAgent(source card + target card)
+  ReviewerAgent(source card + target card, blind to primary)
+    -> disagreement or confidence < 0.60 ?
+       yes: AdjudicatorAgent
+       no: agreement result
+  deterministic calculate_scores()
+  SummaryAgent(read-only result)
 ```
 
-## 输入隔离
+## 3. Agent 边界
 
-- 目标侧 Anchor/Event 抽取只看 `eval_unit_id + target_unit`，不看源文。
-- Fluency 只看完整译文。
-- Dimension Scoring 不看原文和译文，只看已有结构化判断。
-- Reference Translation 不进入核心阶段。
-- 实际系统名称不传给 LLM，产物落盘时由代码恢复。
+| Agent | 可见输入 | 禁止职责 |
+|---|---|---|
+| SourceEvidence | 原文、语言、领域 | 看译文、打分、按系统重构源卡 |
+| Alignment | source units、完整译文 | 抽取/评价/评分 |
+| TargetEvidence | 目标单元 | 看源文、判断忠实度 |
+| Fluency | 完整译文 | 判断误译漏译 |
+| SIExpression | 原文、完整译文 | 重复处罚内容错误 |
+| PrimaryJudge | 两侧结构化证据 | 重抽取、评分、总结 |
+| Reviewer | 与 Primary 相同，但看不到 Primary 输出 | 迎合首轮结果 |
+| Adjudicator | 争议 case 和两侧证据 | 处理未触发 case |
+| Summary | 最终判定与代码分数 | 改 verdict 或分数 |
 
-## 失败策略
+真实 `system_name` 不进入 LLM payload，统一使用 `anonymous_system`。参考译文只留档，不进入核心 Agent。
 
-每个阶段先执行一次，结构不合格时最多执行两轮结构修复。源文切分失败时保留完整源文为一个 unit；译文对齐切分失败时保留完整双侧文本并标记 `uncertain`。其他语义抽取或评分阶段在修复仍失败时关闭该样本，避免用代码伪造语义结果。
+## 4. 验证和修复
+
+每个 LLM 阶段执行一次生成和一次结构修复机会。验证覆盖：
+
+- 必需数组和字段类型；
+- ID 连续性与引用完整性；
+- source/target 无损拼接；
+- source unit 恰好覆盖一次；
+- evidence span 逐字存在；
+- judgement 与源项目严格一一对应；
+- 目标证据属于引用的局部 eval units；
+- verdict、confidence、severity 合法；
+- 同一表达维度不重复处罚同一 target span。
+
+Repair 只能修结构，不能重做语义。修复后仍失败，当前样本/系统写入 `failures.jsonl`。
+
+## 5. 复现与恢复
+
+`run_manifest.json` 记录输入哈希、Prompt 哈希、核心实现哈希、模型和计分策略。`--resume` 只有在这些字段全部一致时才允许继续，以免把不同实验条件混入同一 run。
+
+## 6. 客观性边界
+
+该架构把主观语义判断变为可定位、可复核的结构化判断，但 LLM verdict 仍是测量模型的输出。真正的 benchmark 有效性必须通过人工金标、标注者一致性、模型间稳定性和权重校准验证。

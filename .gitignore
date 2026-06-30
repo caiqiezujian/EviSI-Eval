@@ -14,3 +14,4 @@ data/user_*.jsonl
 reports/*.html
 reports/*.csv
 results/
+tmp/

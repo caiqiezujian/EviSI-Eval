@@ -1,10 +1,4 @@
-"""EviSI-Eval v0.4 — Agent-based evaluation pipeline.
-
-Uses AgentLoop (SourceWorker → TargetWorker → MainAgent) instead of the
-16-stage hardcoded pipeline. The file-level orchestration (reading inputs,
-iterating samples/outputs, writing artifacts, generating reports) remains
-the responsibility of this module.
-"""
+"""File orchestration for the frozen-source v0.5 evaluation agents."""
 
 from __future__ import annotations
 
@@ -13,28 +7,31 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-from .agents import PROTOCOL_VERSION, AgentLoop
-from .config import get_provider_config
+from .agents import EvaluationAgentLoop, SourceCardAgent
+from .config import get_provider_config, get_review_provider_name
 from .io_utils import append_jsonl, read_json, read_jsonl, write_json, write_jsonl
 from .llm_provider import HTTPJSONClient, LLMClient
 from .prompt_loader import prompt_manifest
 from .report import export_html_report
-from .validation import DIMENSIONS
+from .validation import (
+    DIMENSIONS,
+    DIMENSION_WEIGHTS,
+    PROTOCOL_VERSION,
+    SEVERITY_DEDUCTIONS,
+    VERDICT_VALUES,
+)
 
-# ── Artifact file layout ──
-SOURCE_FILES = {
+
+IMPLEMENTATION_VERSION = "0.5.0"
+ARTIFACT_FILES = {
     "source_cards": "source/source_cards.jsonl",
-}
-TARGET_FILES = {
     "target_eval_cards": "target/target_eval_cards.jsonl",
-}
-SCORE_FILES = {
+    "primary_judgements": "score/score_01_primary_judgements.jsonl",
+    "review_judgements": "score/score_02_review_judgements.jsonl",
+    "adjudications": "score/score_03_adjudications.jsonl",
     "score_06_final_results": "score/score_06_final_results.jsonl",
 }
-ARTIFACT_FILES = {**SOURCE_FILES, **TARGET_FILES, **SCORE_FILES}
 
-
-# ── Public API ──
 
 def run_pipeline(
     samples_path: str,
@@ -42,58 +39,47 @@ def run_pipeline(
     output_dir: str = "results",
     run_name: str = "evaluation_run",
     provider_name: str = "deepseek",
+    review_provider_name: str | None = None,
     resume: bool = False,
     sample_ids: list[str] | None = None,
     system_names: list[str] | None = None,
     limit_samples: int | None = None,
     limit_outputs: int | None = None,
-    client: LLMClient | None = None,
+    primary_client: LLMClient | None = None,
+    review_client: LLMClient | None = None,
 ) -> dict[str, Any]:
-    """Run the agent-based evaluation pipeline.
-
-    Args:
-        samples_path: Path to source samples JSONL.
-        outputs_path: Path to system output JSONL.
-        output_dir: Root directory for run results.
-        run_name: Name of this run (creates a subdirectory).
-        provider_name: One of deepseek, openai, gemini, custom.
-        resume: If True, skip already-completed samples.
-        sample_ids: Optional whitelist of sample IDs to process.
-        system_names: Optional whitelist of system names to process.
-        limit_samples: Max number of samples to process.
-        limit_outputs: Max number of outputs to process.
-        client: Optional pre-configured LLMClient (used in tests).
-
-    Returns:
-        Metrics dict with aggregate scores and per-system breakdowns.
-    """
-    # ── Load and validate inputs ──
     all_samples = [_normalize_sample(row) for row in read_jsonl(samples_path)]
     all_outputs = [_normalize_output(row) for row in read_jsonl(outputs_path)]
     _validate_inputs(all_samples, all_outputs)
     samples, outputs = _select_rows(
-        all_samples, all_outputs, sample_ids, system_names, limit_samples, limit_outputs,
+        all_samples, all_outputs, sample_ids, system_names, limit_samples, limit_outputs
     )
 
-    if client is None:
-        client = HTTPJSONClient(get_provider_config(provider_name))
+    injected_primary = primary_client is not None
+    if primary_client is None:
+        primary_client = HTTPJSONClient(get_provider_config(provider_name))
+    if review_client is None:
+        if injected_primary and review_provider_name is None:
+            review_client = primary_client
+        else:
+            review_name = review_provider_name or get_review_provider_name(primary_client.provider_name)
+            review_client = HTTPJSONClient(get_provider_config(review_name))
 
-    # ── Set up run directory ──
     run_dir = Path(output_dir) / run_name
     paths = {key: run_dir / value for key, value in ARTIFACT_FILES.items()}
-    paths.update({
-        "source_input": run_dir / "source/source_00_input.jsonl",
-        "target_input": run_dir / "target/target_00_input.jsonl",
-        "failures": run_dir / "failures.jsonl",
-        "metrics": run_dir / "metrics.json",
-        "manifest": run_dir / "run_manifest.json",
-        "report": run_dir / "report.html",
-        "agent_trace": run_dir / "agent_trace.jsonl",
-    })
+    paths.update(
+        {
+            "source_input": run_dir / "source/source_00_input.jsonl",
+            "target_input": run_dir / "target/target_00_input.jsonl",
+            "failures": run_dir / "failures.jsonl",
+            "metrics": run_dir / "metrics.json",
+            "manifest": run_dir / "run_manifest.json",
+            "report": run_dir / "report.html",
+            "agent_trace": run_dir / "agent_trace.jsonl",
+        }
+    )
     run_dir.mkdir(parents=True, exist_ok=True)
-
-    # ── Manifest and resume guard ──
-    manifest = _manifest(samples_path, outputs_path, samples, outputs, client)
+    manifest = _manifest(samples_path, outputs_path, samples, outputs, primary_client, review_client)
     if resume and paths["manifest"].exists():
         _assert_resume_compatible(read_json(paths["manifest"]), manifest)
     elif not resume:
@@ -104,125 +90,158 @@ def run_pipeline(
     write_jsonl(paths["source_input"], samples)
     write_jsonl(paths["target_input"], outputs)
 
-    # ── Setup the agent loop ──
-    loop = AgentLoop(client)
-
-    # ── Resume state ──
-    cards = {
-        str(r["sample_id"]): r
-        for r in (read_jsonl(paths["source_cards"]) if resume else [])
-    }
     failures = read_jsonl(paths["failures"]) if resume else []
-    results = read_jsonl(paths["score_06_final_results"]) if resume else []
-    completed = {(str(r["sample_id"]), str(r["system_name"])) for r in results}
+    cards = {
+        str(row["sample_id"]): row
+        for row in (read_jsonl(paths["source_cards"]) if resume else [])
+    }
+    source_agent = SourceCardAgent(primary_client)
+    for sample in samples:
+        sample_id = str(sample["sample_id"])
+        if sample_id in cards:
+            continue
+        try:
+            card, _ = source_agent.build(sample)
+            cards[sample_id] = card
+            append_jsonl(paths["source_cards"], card)
+        except Exception as exc:
+            failure = {"stage": "source_card", "sample_id": sample_id, "error": str(exc)}
+            failures.append(failure)
+            append_jsonl(paths["failures"], failure)
 
-    # ── Sink helpers ──
-    def source_sink(stage: str, artifact: dict[str, Any]) -> None:
-        if stage == "source_cards":
-            append_jsonl(paths["source_cards"], artifact)
+    results = read_jsonl(paths["score_06_final_results"]) if resume else []
+    completed = {(str(row["sample_id"]), str(row["system_name"])) for row in results}
+    evaluation_loop = EvaluationAgentLoop(primary_client, review_client)
 
     def target_sink(stage: str, artifact: dict[str, Any]) -> None:
-        if stage == "target_eval_cards":
-            append_jsonl(paths["target_eval_cards"], artifact)
+        append_jsonl(paths[stage], artifact)
 
     def score_sink(stage: str, artifact: dict[str, Any]) -> None:
-        if stage == "score_06_final_results":
-            append_jsonl(paths["score_06_final_results"], artifact)
+        append_jsonl(paths[stage], artifact)
 
-    def trace_sink(artifact: dict[str, Any]) -> None:
-        append_jsonl(paths["agent_trace"], artifact)
-
-    # ── Main evaluation loop ──
     for output in outputs:
         key = (str(output["sample_id"]), str(output["system_name"]))
         if key in completed:
             continue
-
-        sample = next(
-            (s for s in samples if str(s["sample_id"]) == key[0]), None
-        )
-        if sample is None:
+        source_card = cards.get(key[0])
+        if source_card is None:
             failure = {
-                "stage": "unknown_sample",
+                "stage": "evaluation",
                 "sample_id": key[0],
                 "system_name": key[1],
-                "error": "Output references a sample not in the input set",
+                "error": "No validated frozen source card",
             }
             failures.append(failure)
             append_jsonl(paths["failures"], failure)
             continue
-
         try:
-            # AgentLoop handles source → target → score in one call
-            final_result, _ = loop.run(
-                sample, output,
-                source_sink=source_sink,
-                target_sink=target_sink,
-                score_sink=score_sink,
-            )
-            results.append(final_result)
+            result, _ = evaluation_loop.run(source_card, output, target_sink, score_sink)
+            results.append(result)
             completed.add(key)
-            # Write trace
-            trace_sink({
-                "sample_id": key[0],
-                "system_name": key[1],
-                "agent_trace": final_result["metadata"]["agent_trace"],
-            })
+            append_jsonl(
+                paths["agent_trace"],
+                {
+                    "sample_id": key[0],
+                    "system_name": key[1],
+                    "source_card_hash": source_card["metadata"]["source_card_hash"],
+                    "agent_trace": result["metadata"]["agent_trace"],
+                },
+            )
         except Exception as exc:
             failure = {
-                "stage": "agent_loop",
+                "stage": "evaluation",
                 "sample_id": key[0],
                 "system_name": key[1],
+                "source_card_hash": source_card["metadata"]["source_card_hash"],
                 "error": str(exc),
             }
             failures.append(failure)
             append_jsonl(paths["failures"], failure)
 
-    # ── Finalize ──
-    results.sort(key=lambda r: (str(r["sample_id"]), str(r["system_name"])))
+    results.sort(key=lambda row: (str(row["sample_id"]), str(row["system_name"])))
     write_jsonl(paths["score_06_final_results"], results)
     metrics = compute_metrics(results, failures)
-    metrics["paths"] = {key: str(p) for key, p in paths.items()}
+    metrics["paths"] = {key: str(path) for key, path in paths.items()}
     write_json(paths["metrics"], metrics)
     export_html_report(results, metrics, paths["report"])
     return metrics
 
 
-def compute_metrics(
-    results: list[dict[str, Any]],
-    failures: list[dict[str, Any]] | None = None,
-) -> dict[str, Any]:
+def compute_metrics(results: list[dict[str, Any]], failures: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for result in results:
         grouped[str(result["system_name"])].append(result)
     systems = {}
     for system_name, rows in sorted(grouped.items()):
+        final_rows = [
+            row for row in rows
+            if row.get("score_status") == "final" and _is_number(row.get("final_score"))
+        ]
+        provisional_rows = [
+            row for row in rows
+            if row.get("score_status") != "final" and _is_number(row.get("final_score"))
+        ]
+        scored_rows = final_rows + provisional_rows
         systems[system_name] = {
             "samples": len(rows),
-            "average_score": _mean([float(r["final_score"]) for r in rows]),
+            "average_score": _mean([float(row["final_score"]) for row in final_rows]),
+            "provisional_average_score": _mean(
+                [float(row["final_score"]) for row in provisional_rows]
+            ),
+            "diagnostic_average_score_including_provisional": _mean(
+                [float(row["final_score"]) for row in scored_rows]
+            ),
+            "final_results": len(final_rows),
+            "provisional_results": sum(row.get("score_status") != "final" for row in rows),
+            "unscored_results": sum(not _is_number(row.get("final_score")) for row in rows),
             "dimension_scores": {
-                dim: _mean([float(r["dimension_scores"][dim]) for r in rows])
-                for dim in DIMENSIONS
+                dimension: _mean(
+                    [
+                        float(row["dimension_scores"][dimension])
+                        for row in final_rows
+                        if _is_number(row.get("dimension_scores", {}).get(dimension))
+                        and _dimension_is_applicable(row, dimension)
+                    ]
+                )
+                for dimension in DIMENSIONS
             },
         }
+    final_results = [
+        row for row in results
+        if row.get("score_status") == "final" and _is_number(row.get("final_score"))
+    ]
+    provisional_results = [
+        row for row in results
+        if row.get("score_status") != "final" and _is_number(row.get("final_score"))
+    ]
     return {
         "protocol_version": PROTOCOL_VERSION,
+        "implementation_version": IMPLEMENTATION_VERSION,
         "num_results": len(results),
         "num_failures": len(failures or []),
-        "average_score": _mean([float(r["final_score"]) for r in results]),
+        "average_score": _mean([float(row["final_score"]) for row in final_results]),
+        "provisional_average_score": _mean(
+            [float(row["final_score"]) for row in provisional_results]
+        ),
+        "diagnostic_average_score_including_provisional": _mean(
+            [float(row["final_score"]) for row in final_results + provisional_results]
+        ),
+        "num_final_results": len(final_results),
+        "num_provisional_results": sum(
+            row.get("score_status") != "final" for row in results
+        ),
+        "num_unscored_results": sum(
+            not _is_number(row.get("final_score")) for row in results
+        ),
         "systems": systems,
     }
 
-
-# ── Input normalization ──
 
 def _normalize_sample(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "sample_id": str(row.get("sample_id") or row.get("vid") or "").strip(),
         "source_text": str(row.get("source_text") or row.get("transcript") or ""),
-        "reference_translation": row.get(
-            "reference_translation", row.get("offline_translation")
-        ),
+        "reference_translation": row.get("reference_translation", row.get("offline_translation")),
         "src_lang": str(row.get("src_lang") or "unspecified"),
         "tgt_lang": str(row.get("tgt_lang") or "unspecified"),
         "domain": str(row.get("domain") or "unspecified"),
@@ -237,90 +256,81 @@ def _normalize_output(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-# ── Validation ──
-
-def _validate_inputs(
-    samples: list[dict[str, Any]], outputs: list[dict[str, Any]]
-) -> None:
+def _validate_inputs(samples: list[dict[str, Any]], outputs: list[dict[str, Any]]) -> None:
     sample_ids = [row["sample_id"] for row in samples]
-    if any(not v for v in sample_ids) or len(sample_ids) != len(set(sample_ids)):
+    if any(not value for value in sample_ids) or len(sample_ids) != len(set(sample_ids)):
         raise ValueError("samples must have unique non-empty sample_id values")
-    for row in samples:
-        if not row["source_text"].strip():
-            raise ValueError(f"sample {row['sample_id']} has empty source_text")
+    if any(not row["source_text"].strip() for row in samples):
+        raise ValueError("every sample needs non-empty source_text")
     valid_ids = set(sample_ids)
     output_keys = []
     for row in outputs:
-        if row["sample_id"] not in valid_ids:
-            raise ValueError(
-                f"output references unknown sample_id={row['sample_id']}"
-            )
-        if not row["system_name"] or not row["si_translation"].strip():
-            raise ValueError("every output needs system_name and si_translation")
+        if row["sample_id"] not in valid_ids or not row["system_name"] or not row["si_translation"].strip():
+            raise ValueError("every output must reference a sample and contain system_name/si_translation")
         output_keys.append((row["sample_id"], row["system_name"]))
     if len(output_keys) != len(set(output_keys)):
         raise ValueError("outputs must have unique (sample_id, system_name) pairs")
 
 
 def _select_rows(
-    samples: list[dict[str, Any]],
-    outputs: list[dict[str, Any]],
-    sample_ids: list[str] | None,
-    system_names: list[str] | None,
-    limit_samples: int | None,
-    limit_outputs: int | None,
+    samples: list[dict[str, Any]], outputs: list[dict[str, Any]], sample_ids: list[str] | None,
+    system_names: list[str] | None, limit_samples: int | None, limit_outputs: int | None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    selected_samples = [
-        r for r in samples if sample_ids is None or r["sample_id"] in set(sample_ids)
-    ]
+    sample_filter = set(sample_ids) if sample_ids is not None else None
+    system_filter = set(system_names) if system_names is not None else None
+    selected_samples = [row for row in samples if sample_filter is None or row["sample_id"] in sample_filter]
     if limit_samples is not None:
         selected_samples = selected_samples[:limit_samples]
-    selected_ids = {r["sample_id"] for r in selected_samples}
+    selected_ids = {row["sample_id"] for row in selected_samples}
     selected_outputs = [
-        r for r in outputs
-        if r["sample_id"] in selected_ids
-        and (system_names is None or r["system_name"] in set(system_names))
+        row for row in outputs
+        if row["sample_id"] in selected_ids and (system_filter is None or row["system_name"] in system_filter)
     ]
     if limit_outputs is not None:
         selected_outputs = selected_outputs[:limit_outputs]
-    required_ids = {r["sample_id"] for r in selected_outputs}
-    selected_samples = [r for r in selected_samples if r["sample_id"] in required_ids]
+    required_ids = {row["sample_id"] for row in selected_outputs}
+    selected_samples = [row for row in selected_samples if row["sample_id"] in required_ids]
     if not selected_samples or not selected_outputs:
         raise ValueError("selection produced no sample/output pairs")
     return selected_samples, selected_outputs
 
 
-# ── Manifest ──
-
 def _manifest(
-    samples_path: str,
-    outputs_path: str,
-    samples: list[dict[str, Any]],
-    outputs: list[dict[str, Any]],
-    client: LLMClient,
+    samples_path: str, outputs_path: str, samples: list[dict[str, Any]], outputs: list[dict[str, Any]],
+    primary: LLMClient, reviewer: LLMClient,
 ) -> dict[str, Any]:
     return {
         "protocol_version": PROTOCOL_VERSION,
+        "implementation_version": IMPLEMENTATION_VERSION,
+        "implementation_hash": _implementation_hash(),
         "samples_sha256": _file_hash(samples_path),
         "outputs_sha256": _file_hash(outputs_path),
-        "selected_sample_ids": [r["sample_id"] for r in samples],
-        "selected_output_keys": [
-            [r["sample_id"], r["system_name"]] for r in outputs
-        ],
+        "selected_sample_ids": [row["sample_id"] for row in samples],
+        "selected_output_keys": [[row["sample_id"], row["system_name"]] for row in outputs],
         "prompt_hashes": prompt_manifest(),
-        "provider": client.provider_name,
-        "model": client.model_name,
+        "scoring_policy": {
+            "dimension_weights": DIMENSION_WEIGHTS,
+            "verdict_values": VERDICT_VALUES,
+            "severity_deductions": SEVERITY_DEDUCTIONS,
+            "not_applicable_dimensions": "zero_weight_then_renormalize",
+        },
+        "primary_provider": primary.provider_name,
+        "primary_model": primary.model_name,
+        "review_provider": reviewer.provider_name,
+        "review_model": reviewer.model_name,
     }
 
 
-def _assert_resume_compatible(
-    existing: dict[str, Any], current: dict[str, Any]
-) -> None:
-    changed = [k for k, v in current.items() if existing.get(k) != v]
+def _assert_resume_compatible(existing: dict[str, Any], current: dict[str, Any]) -> None:
+    changed = [key for key, value in current.items() if existing.get(key) != value]
     if changed:
-        raise ValueError(
-            "Cannot resume because run configuration changed: " + ", ".join(changed)
-        )
+        raise ValueError("Cannot resume because run configuration changed: " + ", ".join(changed))
+
+
+def _implementation_hash() -> str:
+    root = Path(__file__).resolve().parent
+    payload = b"".join((root / name).read_bytes() for name in ("agents.py", "validation.py", "pipeline.py"))
+    return hashlib.sha256(payload).hexdigest()
 
 
 def _file_hash(path: str) -> str:
@@ -329,3 +339,15 @@ def _file_hash(path: str) -> str:
 
 def _mean(values: list[float]) -> float | None:
     return round(sum(values) / len(values), 2) if values else None
+
+
+def _is_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _dimension_is_applicable(row: dict[str, Any], dimension: str) -> bool:
+    if dimension in {"fluency", "si_expression"}:
+        return True
+    return bool(
+        row.get("score_diagnostics", {}).get(dimension, {}).get("applicable", True)
+    )

@@ -1,31 +1,71 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.invalid/evisi/final-result-v0.3.schema.json",
-  "title": "EviSI-Eval v0.3 Final Result",
+  "$id": "https://example.invalid/evisi/final-result-v0.5.schema.json",
+  "title": "EviSI-Eval v0.5 Final Result",
   "type": "object",
-  "required": ["sample_id", "system_name", "source_text", "si_translation", "source_units", "eval_units", "source_anchors", "target_anchors", "source_events", "target_events", "source_relations", "target_relations", "anchor_judgements", "event_judgements", "relation_judgements", "global_fidelity_review", "dimension_scores", "dimension_score_explanations", "dimension_weights", "final_score", "score_summary", "metadata"],
+  "required": [
+    "sample_id", "system_name", "source_text", "si_translation", "source_card_hash",
+    "source_units", "eval_units", "source_anchors", "target_anchors", "source_events", "target_events",
+    "source_relations", "target_relations", "anchor_judgements", "event_judgements", "relation_judgements",
+    "fluency_issues", "si_expression_issues", "dimension_scores", "dimension_weights", "effective_dimension_weights", "score_diagnostics",
+    "final_score", "score_status", "score_summary", "review", "metadata"
+  ],
   "properties": {
     "sample_id": {"type": "string", "minLength": 1},
     "system_name": {"type": "string", "minLength": 1},
-    "dimension_scores": {"$ref": "#/$defs/dimensions"},
+    "source_card_hash": {"type": "string", "minLength": 1},
+    "anchor_judgements": {"type": "array", "items": {"$ref": "#/$defs/judgement"}},
+    "event_judgements": {"type": "array", "items": {"$ref": "#/$defs/judgement"}},
+    "relation_judgements": {"type": "array", "items": {"$ref": "#/$defs/judgement"}},
+    "dimension_scores": {"$ref": "#/$defs/score_dimensions"},
     "dimension_weights": {"$ref": "#/$defs/dimensions"},
-    "final_score": {"type": "number", "minimum": 0, "maximum": 100},
+    "effective_dimension_weights": {"$ref": "#/$defs/dimensions"},
+    "score_diagnostics": {"type": "object"},
+    "final_score": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+    "score_status": {"enum": ["final", "provisional_review_required", "provisional_no_decisions"]},
     "score_summary": {
       "type": "object",
       "required": ["overall_judgement", "main_strengths", "main_errors", "uncertain_points"]
     },
-    "metadata": {"type": "object", "required": ["protocol_version", "agent_trace", "prompt_hashes"]}
+    "review": {
+      "type": "object",
+      "required": ["review_provider", "review_model", "independent_model", "disagreement_count", "adjudication_count"]
+    },
+    "metadata": {"type": "object", "required": ["protocol_version", "agent_trace", "prompt_hashes", "validation"]}
   },
   "$defs": {
+    "score_dimensions": {
+      "type": "object",
+      "required": ["anchor_fidelity", "event_fidelity", "relation_fidelity", "fluency", "si_expression"],
+      "properties": {
+        "anchor_fidelity": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+        "event_fidelity": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+        "relation_fidelity": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+        "fluency": {"type": "number", "minimum": 0, "maximum": 100},
+        "si_expression": {"type": "number", "minimum": 0, "maximum": 100}
+      }
+    },
     "dimensions": {
       "type": "object",
       "required": ["anchor_fidelity", "event_fidelity", "relation_fidelity", "fluency", "si_expression"],
       "properties": {
-        "anchor_fidelity": {"type": "number"},
-        "event_fidelity": {"type": "number"},
-        "relation_fidelity": {"type": "number"},
-        "fluency": {"type": "number"},
-        "si_expression": {"type": "number"}
+        "anchor_fidelity": {"type": "number", "minimum": 0, "maximum": 100},
+        "event_fidelity": {"type": "number", "minimum": 0, "maximum": 100},
+        "relation_fidelity": {"type": "number", "minimum": 0, "maximum": 100},
+        "fluency": {"type": "number", "minimum": 0, "maximum": 100},
+        "si_expression": {"type": "number", "minimum": 0, "maximum": 100}
+      }
+    },
+    "judgement": {
+      "type": "object",
+      "required": ["judgement_id", "source_evidence_spans", "eval_unit_ids", "target_evidence_spans", "verdict", "confidence", "reason", "resolution", "review_verdict", "review_confidence"],
+      "properties": {
+        "judgement_id": {"type": "string", "pattern": "^(AJ|EJ|RJ)[1-9][0-9]*$"},
+        "source_evidence_spans": {"type": "array", "items": {"type": "string"}},
+        "eval_unit_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "target_evidence_spans": {"type": "array", "items": {"type": "string"}},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "resolution": {"enum": ["primary_reviewer_agreement", "adjudicated"]}
       }
     }
   }
