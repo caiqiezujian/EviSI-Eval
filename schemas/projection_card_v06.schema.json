@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/evisi/projection-card-v06.schema.json",
+  "title": "EviSI-Eval v0.6 Source-Conditioned Projection Card",
+  "type": "object",
+  "required": [
+    "sample_id", "translation_role", "system_name", "target_translation",
+    "source_card_hash", "target_units", "anchor_projections",
+    "event_projections", "relation_projections", "target_additions", "metadata"
+  ],
+  "properties": {
+    "sample_id": {"type": "string", "minLength": 1},
+    "translation_role": {"enum": ["reference", "si"]},
+    "system_name": {"type": "string", "minLength": 1},
+    "target_translation": {"type": "string", "minLength": 1},
+    "source_card_hash": {"type": "string", "minLength": 1},
+    "reference_card_hash": {"type": "string", "minLength": 1},
+    "evaluation_context_hash": {"type": "string", "minLength": 1},
+    "target_units": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/unit"}},
+    "anchor_projections": {"type": "array", "items": {"$ref": "#/$defs/anchorProjection"}},
+    "event_projections": {"type": "array", "items": {"$ref": "#/$defs/eventProjection"}},
+    "relation_projections": {"type": "array", "items": {"$ref": "#/$defs/relationProjection"}},
+    "target_additions": {"type": "object"},
+    "metadata": {"type": "object"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"translation_role": {"const": "si"}}},
+      "then": {"required": ["reference_card_hash", "evaluation_context_hash"]}
+    }
+  ],
+  "$defs": {
+    "unit": {
+      "type": "object",
+      "required": ["target_unit_id", "source_segment_ids", "target_text", "alignment_status", "reason"],
+      "properties": {
+        "target_unit_id": {"type": "string", "pattern": "^T[1-9][0-9]*$"},
+        "source_segment_ids": {"type": "array", "items": {"type": "string"}},
+        "target_text": {"type": "string"},
+        "alignment_status": {"enum": ["aligned", "source_omitted", "target_addition", "uncertain"]}
+      }
+    },
+    "hardRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "requirement_type", "required_target_form", "required_semantics", "basis", "reason"],
+      "properties": {
+        "required": {"type": "boolean"},
+        "requirement_type": {"type": ["string", "null"]},
+        "required_target_form": {"type": ["string", "null"]},
+        "required_semantics": {"type": "array", "items": {"type": "string"}},
+        "basis": {"type": ["string", "null"]},
+        "reason": {"type": "string"}
+      }
+    },
+    "componentResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component", "source_value", "target_value", "status", "target_span"],
+      "properties": {
+        "component": {"type": "string", "minLength": 1},
+        "source_value": {"type": ["string", "number", "boolean"]},
+        "target_value": {"type": ["string", "number", "boolean", "null"]},
+        "status": {"enum": ["preserved", "omitted", "contradicted", "uncertain"]},
+        "target_span": {"type": ["string", "null"]}
+      }
+    },
+    "eventStructure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["core_predicate", "predicate_span", "arguments", "operators", "canonical_proposition"],
+      "properties": {
+        "core_predicate": {"type": ["string", "null"]},
+        "predicate_span": {"type": ["string", "null"]},
+        "arguments": {"type": "array", "items": {"type": "object"}},
+        "operators": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["negation", "modality", "direction", "polarity", "stance"]
+        },
+        "canonical_proposition": {"type": ["string", "null"]}
+      }
+    },
+    "projectionBase": {
+      "type": "object",
+      "required": ["projection_id", "target_unit_ids", "target_spans", "target_meaning", "mapping_status", "confidence", "reason"],
+      "properties": {
+        "target_unit_ids": {"type": "array", "items": {"type": "string"}},
+        "target_spans": {"type": "array", "items": {"type": "string"}},
+        "mapping_status": {"enum": ["equivalent", "partial", "contradiction", "missing", "uncertain", "not_scored"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "anchorProjection": {
+      "allOf": [
+        {"$ref": "#/$defs/projectionBase"},
+        {"type": "object", "required": ["source_anchor_id", "component_results", "hard_requirement", "hard_requirement_satisfied"],
+         "properties": {
+           "component_results": {"type": "array", "items": {"$ref": "#/$defs/componentResult"}},
+           "hard_requirement": {"$ref": "#/$defs/hardRequirement"}
+         }}
+      ]
+    },
+    "eventProjection": {
+      "allOf": [
+        {"$ref": "#/$defs/projectionBase"},
+        {"type": "object", "required": ["source_event_id", "target_event_structure", "predicate_status", "argument_status", "operator_status", "hard_requirement", "hard_requirement_satisfied"],
+         "properties": {
+           "target_event_structure": {"$ref": "#/$defs/eventStructure"},
+           "predicate_status": {"enum": ["preserved", "omitted", "contradicted", "uncertain"]},
+           "argument_status": {"enum": ["preserved", "omitted", "contradicted", "uncertain"]},
+           "operator_status": {"enum": ["preserved", "omitted", "contradicted", "uncertain"]},
+           "hard_requirement": {"$ref": "#/$defs/hardRequirement"}
+         }}
+      ]
+    },
+    "relationProjection": {
+      "allOf": [
+        {"$ref": "#/$defs/projectionBase"},
+        {"type": "object", "required": ["source_relation_id", "dependency_status"]}
+      ]
+    }
+  }
+}

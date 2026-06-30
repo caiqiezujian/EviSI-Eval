@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/evisi/source-card-v06.schema.json",
+  "title": "EviSI-Eval v0.6 Source Obligation Card",
+  "type": "object",
+  "required": [
+    "sample_id", "source_text", "source_segments", "source_anchors",
+    "source_events", "source_relations", "metadata"
+  ],
+  "properties": {
+    "sample_id": {"type": "string", "minLength": 1},
+    "source_text": {"type": "string", "minLength": 1},
+    "source_segments": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/segment"}},
+    "source_anchors": {"type": "array", "items": {"$ref": "#/$defs/anchor"}},
+    "source_events": {"type": "array", "items": {"$ref": "#/$defs/event"}},
+    "source_relations": {"type": "array", "items": {"$ref": "#/$defs/relation"}},
+    "metadata": {"type": "object"}
+  },
+  "$defs": {
+    "segment": {
+      "type": "object",
+      "required": ["segment_id", "source_segment"],
+      "properties": {
+        "segment_id": {"type": "string", "pattern": "^G[1-9][0-9]*$"},
+        "source_segment": {"type": "string", "minLength": 1}
+      }
+    },
+    "anchor": {
+      "type": "object",
+      "required": [
+        "segment_id", "source_anchor_id", "anchor_type", "anchor_text",
+        "normalized_value", "components", "evidence_span", "importance"
+      ],
+      "properties": {
+        "source_anchor_id": {"type": "string", "pattern": "^SA[1-9][0-9]*$"},
+        "anchor_type": {"enum": ["A-ENT", "A-QNT", "A-TMP", "A-TERM", "A-SCOPE"]},
+        "components": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {"type": "string", "minLength": 1},
+          "additionalProperties": {
+            "type": ["string", "number", "boolean"]
+          }
+        },
+        "importance": {"enum": [1, 2, 3]}
+      }
+    },
+    "event": {
+      "type": "object",
+      "required": [
+        "segment_id", "source_event_id", "event_type", "evidence_spans",
+        "predicate_span", "core_predicate", "arguments", "operators",
+        "canonical_proposition", "importance"
+      ],
+      "properties": {
+        "source_event_id": {"type": "string", "pattern": "^SE[1-9][0-9]*$"},
+        "event_type": {"enum": ["E-ACT", "E-STATE", "E-CHANGE", "E-JUDG", "E-REL", "E-SPEECH", "E-MODAL"]},
+        "evidence_spans": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "arguments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["role", "surface_span", "source_anchor_ids"],
+            "properties": {
+              "role": {"type": "string", "minLength": 1},
+              "surface_span": {"type": "string"},
+              "source_anchor_ids": {
+                "type": "array", "uniqueItems": true,
+                "items": {"type": "string", "pattern": "^SA[1-9][0-9]*$"}
+              }
+            }
+          }
+        },
+        "operators": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["negation", "modality", "direction", "polarity", "stance"],
+          "properties": {
+            "negation": {"type": "boolean"},
+            "modality": {"type": ["string", "null"]},
+            "direction": {"type": ["string", "null"]},
+            "polarity": {"type": ["string", "null"]},
+            "stance": {"type": ["string", "null"]}
+          }
+        },
+        "importance": {"enum": [1, 2, 3]}
+      }
+    },
+    "relation": {
+      "type": "object",
+      "required": [
+        "source_relation_id", "segment_ids", "relation_type", "relation_basis",
+        "relation_cue", "confidence", "relation_text", "relation_meaning",
+        "evidence_spans", "related_source_event_ids", "importance"
+      ],
+      "properties": {
+        "source_relation_id": {"type": "string", "pattern": "^SR[1-9][0-9]*$"},
+        "relation_basis": {"enum": ["explicit_cue", "strong_semantic_entailment"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "related_source_event_ids": {"type": "array", "minItems": 2, "uniqueItems": true},
+        "importance": {"enum": [1, 2, 3]}
+      }
+    }
+  }
+}

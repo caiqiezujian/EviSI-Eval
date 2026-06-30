@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/evisi/final-result-v06.schema.json",
+  "title": "EviSI-Eval v0.6 Final Result",
+  "type": "object",
+  "required": [
+    "sample_id", "system_name", "source_text", "reference_translation",
+    "si_translation", "source_card_hash", "reference_card_hash",
+    "evaluation_context_hash", "si_card_hash",
+    "anchor_projections", "event_projections",
+    "relation_projections", "dimension_scores", "dimension_weights",
+    "score_diagnostics", "final_score", "score_status", "metadata"
+  ],
+  "properties": {
+    "sample_id": {"type": "string", "minLength": 1},
+    "system_name": {"type": "string", "minLength": 1},
+    "source_card_hash": {"type": "string", "minLength": 1},
+    "reference_card_hash": {"type": "string", "minLength": 1},
+    "evaluation_context_hash": {"type": "string", "minLength": 1},
+    "si_card_hash": {"type": "string", "minLength": 1},
+    "final_score": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+    "score_status": {"enum": ["final", "provisional_review_required", "provisional_no_decisions"]},
+    "dimension_scores": {"type": "object"},
+    "dimension_weights": {"type": "object"},
+    "score_diagnostics": {"type": "object"},
+    "metadata": {"type": "object"}
+  }
+}
