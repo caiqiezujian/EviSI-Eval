@@ -139,6 +139,16 @@ python -m evisi_eval check-provider --provider deepseek
 
 > 也可复制 `local_secrets.py.example` 为 `local_secrets.py` 后填写（已被 `.gitignore` 忽略）。
 
+长样本默认使用：单次请求超时 900 秒、失败后最多重试 3 次、最大输出 16384 tokens。可在 `local_secrets.py` 中覆盖：
+
+```python
+EVISI_TIMEOUT_SECONDS = "900"
+EVISI_MAX_RETRIES = "3"
+EVISI_MAX_OUTPUT_TOKENS = "16384"
+```
+
+网络层会对 `IncompleteRead`、空响应、截断 JSON、连接中断和可重试 HTTP 状态自动重试。
+
 ### 3. 运行评测
 
 ```powershell
@@ -152,6 +162,19 @@ python -m evisi_eval run `
 
 断点续跑：`--resume`（prompt、输入或模型哈希改变后需新 `run-name`）
 
+如果新 run 需要复用已经完成并验证的阶段，可显式传入缓存文件。代码会重新校验源文/译文、结构、逐字证据和 source card hash，并把缓存文件哈希写入 manifest：
+
+```bash
+python -m evisi_eval run \
+  --samples data/user_samples_v05/smoke/source_00_input.jsonl \
+  --outputs data/user_samples_v05/smoke/target_00_input.jsonl \
+  --provider deepseek \
+  --source-card-cache results/old_run/source/source_cards.jsonl \
+  --target-card-cache results/old_run/target/target_eval_cards.jsonl \
+  --output-dir results \
+  --run-name resumed_from_validated_cards
+```
+
 **快捷脚本：**
 
 ```powershell
@@ -163,6 +186,16 @@ python -m evisi_eval run `
 ```
 
 ## 输入格式
+
+### 只运行语义抽取
+
+只查看源文/译文 Anchor、Event、Relation，不运行评判和评分：
+
+```bash
+python scripts/run_semantic_extraction.py --samples data/user_samples_v05/smoke/source_00_input.jsonl --outputs data/user_samples_v05/smoke/target_00_input.jsonl --provider deepseek --output-dir results --run-name semantic_v2_smoke
+```
+
+详见 [纯抽取指南](docs/semantic_extraction_guide.md)。Source 与 Target 运行时共同加载 `prompts/semantic_extraction_protocol.md`，旧协议卡不会通过新的 Relation 数据契约。
 
 **样本文件**（每行一个源文）：
 

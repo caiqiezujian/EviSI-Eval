@@ -23,8 +23,9 @@ from .validation import (
 )
 
 
-MAX_REPAIR_ATTEMPTS = 1
+MAX_REPAIR_ATTEMPTS = 2
 ArtifactSink = Callable[[str, dict[str, Any]], None]
+ArtifactNormalizer = Callable[[dict[str, Any]], tuple[dict[str, Any], list[str]]]
 
 
 @dataclass
@@ -32,10 +33,11 @@ class StageResult:
     artifact: dict[str, Any]
     traces: list[dict[str, Any]]
     initial_issues: list[str]
+    normalization_notes: list[str]
 
 
 class Runner:
-    """Run one semantic agent and allow one structure-only repair."""
+    """Run one semantic agent and allow two structure-only repair attempts."""
 
     def __init__(self, client: LLMClient):
         self.client = client
@@ -46,9 +48,14 @@ class Runner:
         payload: dict[str, Any],
         validator: Callable[[dict[str, Any]], list[str]],
         fallback: Callable[[], dict[str, Any]] | None = None,
+        normalizer: ArtifactNormalizer | None = None,
     ) -> StageResult:
         response = self.client.generate_json(load_prompt(prompt_name), payload, task=prompt_name)
         artifact = _canonicalize(response.data, payload)
+        normalization_notes: list[str] = []
+        if normalizer is not None:
+            artifact, notes = normalizer(artifact)
+            normalization_notes.extend(notes)
         traces = [_trace(prompt_name, response)]
         initial_issues = validator(artifact)
         issues = list(initial_issues)
@@ -68,6 +75,9 @@ class Runner:
             )
             traces.append(_trace(f"repair_{prompt_name}", repair))
             artifact = _canonicalize(repair.data, payload)
+            if normalizer is not None:
+                artifact, notes = normalizer(artifact)
+                normalization_notes.extend(notes)
             issues = validator(artifact)
         if issues and fallback is not None:
             artifact = _canonicalize(fallback(), payload)
@@ -75,7 +85,7 @@ class Runner:
             traces.append(_local_trace(f"fallback_{prompt_name}"))
         if issues:
             raise ValueError(f"{prompt_name} failed validation: {'; '.join(issues)}")
-        return StageResult(artifact, traces, initial_issues)
+        return StageResult(artifact, traces, initial_issues, normalization_notes)
 
 
 class SourceCardAgent:
@@ -168,6 +178,7 @@ class TargetEvidenceAgent:
             "target_evidence_agent",
             payload,
             lambda artifact: validate_target_evidence_artifact(artifact, target_units),
+            normalizer=lambda artifact: _normalize_target_evidence(artifact, target_units),
         )
 
 
@@ -290,6 +301,7 @@ class EvaluationAgentLoop:
     def run(
         self, source_card: dict[str, Any], output: dict[str, Any],
         target_sink: ArtifactSink | None = None, score_sink: ArtifactSink | None = None,
+        cached_target_card: dict[str, Any] | None = None,
     ) -> tuple[dict[str, Any], dict[str, dict[str, Any]]]:
         sample_id = _required(output, "sample_id")
         system_name = _required(output, "system_name")
@@ -300,44 +312,49 @@ class EvaluationAgentLoop:
         validation_log: dict[str, Any] = {}
         artifacts: dict[str, dict[str, Any]] = {}
 
-        alignment = self.alignment_agent.align(source_card, output)
-        traces.extend(alignment.traces)
-        _log_validation("alignment_agent", alignment, validation_log)
-        eval_units = _records(alignment.artifact.get("eval_units"))
+        if cached_target_card is not None:
+            target_card = dict(cached_target_card)
+            traces.append(_local_trace("reuse_target_eval_card"))
+            validation_log["target_eval_card_cache"] = {"reused": True}
+        else:
+            alignment = self.alignment_agent.align(source_card, output)
+            traces.extend(alignment.traces)
+            _log_validation("alignment_agent", alignment, validation_log)
+            eval_units = _records(alignment.artifact.get("eval_units"))
 
-        target = self.target_agent.analyze(sample_id, eval_units)
-        traces.extend(target.traces)
-        _log_validation("target_evidence_agent", target, validation_log)
+            target = self.target_agent.analyze(sample_id, eval_units)
+            traces.extend(target.traces)
+            _log_validation("target_evidence_agent", target, validation_log)
 
-        fluency = self.fluency_agent.evaluate(sample_id, translation)
-        traces.extend(fluency.traces)
-        _log_validation("fluency_agent", fluency, validation_log)
+            fluency = self.fluency_agent.evaluate(sample_id, translation)
+            traces.extend(fluency.traces)
+            _log_validation("fluency_agent", fluency, validation_log)
 
-        expression = self.expression_agent.evaluate(source_card, translation)
-        traces.extend(expression.traces)
-        _log_validation("si_expression_agent", expression, validation_log)
+            expression = self.expression_agent.evaluate(source_card, translation)
+            traces.extend(expression.traces)
+            _log_validation("si_expression_agent", expression, validation_log)
 
-        target_card = {
-            "sample_id": sample_id,
-            "system_name": system_name,
-            "si_translation": translation,
-            "eval_units": eval_units,
-            "target_anchors": _records(target.artifact.get("target_anchors")),
-            "target_events": _records(target.artifact.get("target_events")),
-            "target_relations": _records(target.artifact.get("target_relations")),
-            "fluency_issues": _records(fluency.artifact.get("fluency_issues")),
-            "fluency_assessment": str(fluency.artifact.get("fluency_assessment") or ""),
-            "si_expression_issues": _records(expression.artifact.get("si_expression_issues")),
-            "si_expression_assessment": str(expression.artifact.get("si_expression_assessment") or ""),
-            "metadata": {
-                "protocol_version": PROTOCOL_VERSION,
-                "system_name_visible_to_agents": False,
-                "reference_translation_used": False,
-                "primary_provider": self.primary_client.provider_name,
-                "primary_model": self.primary_client.model_name,
-                "validation": validation_log,
-            },
-        }
+            target_card = {
+                "sample_id": sample_id,
+                "system_name": system_name,
+                "si_translation": translation,
+                "eval_units": eval_units,
+                "target_anchors": _records(target.artifact.get("target_anchors")),
+                "target_events": _records(target.artifact.get("target_events")),
+                "target_relations": _records(target.artifact.get("target_relations")),
+                "fluency_issues": _records(fluency.artifact.get("fluency_issues")),
+                "fluency_assessment": str(fluency.artifact.get("fluency_assessment") or ""),
+                "si_expression_issues": _records(expression.artifact.get("si_expression_issues")),
+                "si_expression_assessment": str(expression.artifact.get("si_expression_assessment") or ""),
+                "metadata": {
+                    "protocol_version": PROTOCOL_VERSION,
+                    "system_name_visible_to_agents": False,
+                    "reference_translation_used": False,
+                    "primary_provider": self.primary_client.provider_name,
+                    "primary_model": self.primary_client.model_name,
+                    "validation": validation_log,
+                },
+            }
         artifacts["target_eval_cards"] = target_card
         if target_sink:
             target_sink("target_eval_cards", target_card)
@@ -521,7 +538,86 @@ def _with_identity(artifact: dict[str, Any], sample_id: str, system_name: str) -
 
 
 def _log_validation(name: str, result: StageResult, log: dict[str, Any]) -> None:
-    log[name] = {"initial_issues": result.initial_issues, "repair_count": max(0, len(result.traces) - 1)}
+    log[name] = {
+        "initial_issues": result.initial_issues,
+        "repair_count": max(0, len(result.traces) - 1),
+        "normalization_notes": result.normalization_notes,
+    }
+
+
+def _normalize_target_evidence(
+    artifact: dict[str, Any], target_units: list[dict[str, Any]]
+) -> tuple[dict[str, Any], list[str]]:
+    normalized = dict(artifact)
+    unit_by_id = {
+        str(row.get("eval_unit_id")): str(row.get("target_unit") or "")
+        for row in target_units
+    }
+    notes: list[str] = []
+    for list_key, id_key, text_key in (
+        ("target_anchors", "target_anchor_id", "anchor_text"),
+        ("target_events", "target_event_id", "event_text"),
+    ):
+        rows = [dict(row) for row in _records(normalized.get(list_key))]
+        normalized[list_key] = rows
+        for row in rows:
+            unit_text = unit_by_id.get(str(row.get("eval_unit_id") or ""), "")
+            original = str(row.get("evidence_span") or "")
+            if original and original in unit_text:
+                continue
+            replacement = _locate_verbatim(unit_text, original)
+            if replacement is None:
+                replacement = _locate_verbatim(unit_text, str(row.get(text_key) or ""))
+            if replacement is not None:
+                row["evidence_span"] = replacement
+                notes.append(f"{row.get(id_key)} evidence_span mapped to verbatim target text")
+
+    relation_rows = [dict(row) for row in _records(normalized.get("target_relations"))]
+    normalized["target_relations"] = relation_rows
+    for row in relation_rows:
+        selected_texts = [
+            unit_by_id.get(unit_id, "") for unit_id in _strings(row.get("eval_unit_ids"))
+        ]
+        spans = []
+        changed = False
+        for span in _strings(row.get("evidence_spans")):
+            if any(span in text for text in selected_texts):
+                spans.append(span)
+                continue
+            replacement = next(
+                (
+                    located for text in selected_texts
+                    if (located := _locate_verbatim(text, span)) is not None
+                ),
+                None,
+            )
+            spans.append(replacement if replacement is not None else span)
+            changed = changed or replacement is not None
+        if changed:
+            row["evidence_spans"] = spans
+            notes.append(f"{row.get('target_relation_id')} evidence_spans mapped to verbatim target text")
+    return normalized, notes
+
+
+def _locate_verbatim(text: str, candidate: str) -> str | None:
+    if not text or not candidate:
+        return None
+    if candidate in text:
+        return candidate
+    compact_text: list[str] = []
+    positions: list[int] = []
+    for index, character in enumerate(text):
+        if not character.isspace():
+            compact_text.append(character)
+            positions.append(index)
+    compact_candidate = "".join(character for character in candidate if not character.isspace())
+    if not compact_candidate:
+        return None
+    start = "".join(compact_text).find(compact_candidate)
+    if start < 0:
+        return None
+    end = start + len(compact_candidate) - 1
+    return text[positions[start] : positions[end] + 1]
 
 
 def _required(row: dict[str, Any], key: str) -> str:
@@ -533,6 +629,10 @@ def _required(row: dict[str, Any], key: str) -> str:
 
 def _records(value: Any) -> list[dict[str, Any]]:
     return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
+
+
+def _strings(value: Any) -> list[str]:
+    return [item for item in value if isinstance(item, str) and item] if isinstance(value, list) else []
 
 
 def _trace(task: str, response: LLMResponse) -> dict[str, Any]:

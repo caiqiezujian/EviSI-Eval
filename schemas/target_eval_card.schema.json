@@ -31,7 +31,7 @@
     },
     "target_anchor": {"type": "object", "required": ["eval_unit_id", "target_anchor_id", "anchor_type", "anchor_text", "normalized_meaning", "evidence_span"]},
     "target_event": {"type": "object", "required": ["eval_unit_id", "target_event_id", "event_type", "event_text", "canonical_meaning", "evidence_span"]},
-    "target_relation": {"type": "object", "required": ["target_relation_id", "relation_type", "eval_unit_ids", "relation_text", "relation_meaning", "evidence_spans", "related_target_event_ids"]},
+    "target_relation": {"type": "object", "required": ["target_relation_id", "relation_type", "relation_basis", "relation_cue", "confidence", "eval_unit_ids", "relation_text", "relation_meaning", "evidence_spans", "related_target_event_ids"], "properties": {"relation_basis": {"enum": ["explicit_cue", "strong_semantic_entailment"]}, "relation_cue": {"type": "string"}, "confidence": {"type": "number", "minimum": 0, "maximum": 1}}},
     "issue": {
       "type": "object", "required": ["issue_id", "issue_type", "target_span", "severity", "reason"],
       "properties": {"severity": {"enum": ["minor", "moderate", "major", "critical"]}}

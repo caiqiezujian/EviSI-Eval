@@ -5,6 +5,10 @@
 
 > 2026-06-30 修复状态：两个 P0 已解决。全 uncertain 维度现在输出 `null/no_decisions`，样本总分为 `null/provisional_no_decisions`；正式聚合只使用 `score_status=final`，临时均分单独报告且不参与排名，不适用内容维度也不进入维度均分。新增 3 个回归测试，当前共 22 个测试通过。
 
+> 2026-06-30 稳健性补充：Relation 单元约束改为“存在、唯一、有序但可非连续”；HTTP 客户端增加 IncompleteRead 等瞬时故障重试，默认 timeout 提升至 900 秒；结构修复上限改为 2 次。
+
+> 2026-06-30 真实 smoke 复跑：增加经重新验证的 Source/Target Card 跨 run 缓存、逐字 evidence 确定性归位，并修复未知 target item 导致的 KeyError。当前 29 项本地测试通过；DeepSeek v4 Flash 实际流程完成 1 个正式结果，`num_failures=0`。
+
 ## 一、总体评价
 
 **v0.5 是一个工程上严肃、可审计的多 Agent 评测系统**，不再是"一个 Prompt 走完全流程"。整体架构对应了 2025 年主流的 **Supervisor + Workers + Reviewer + Adjudicator** 模式，融合了 LLM-as-a-Judge 与 Agent-as-a-Judge 的核心思想。19 个测试全部通过，代码风格统一，没有 TODO/FIXME 残留。

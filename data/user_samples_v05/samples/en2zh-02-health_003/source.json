@@ -1,0 +1,8 @@
+{
+  "sample_id": "en2zh-02-health_003",
+  "source_text": "It's not like we, it's not like we have uh the the daily tracking data for the whole um community. And we we do see some, um, w- weird data from here and there, and we just we just actively to, um to to get to get to get get to them. So so I, so what we are trying to do, we're we're collaborating with a lot of the community um um healthcare um center is um we don't, we don't want to people to go for the clinics, we want the clinics go for the people who need um clinics. So so in in that way, we are trying to improve the the the the efficiency of the of the real, you know, the uh the intelligence of the of doctors, and we next we just let the the digital um healthcare to do most of the things based on based on the the uh what we call the multi-dimensional profile that is not just about physics and those about chemistry, um, um POCT type of things as as well as all the other and genetics um they send out.",
+  "reference_translation": "而不是像我们有全社区的日常追踪数据。 我们确实从各个地方看到了一些异常数据，也在积极地获取这些数据。 所以，我们正在努力做的，就是和很多社区医疗保健中心合作。 我们不希望让人们去诊所，而希望诊所上门去为那些有诊疗需求的人服务。 这样一来，我们能切实提高效率，提升医生的智慧。 接下来让数字医疗保健来承担大部分工作，而该操作是以我们所说的多维图谱为基础的。 不仅涉及物理化学方面，还有即时检验（POCT）这类事物，以及其他传递出的与遗传学相关的内容。",
+  "src_lang": "en",
+  "tgt_lang": "zh",
+  "domain": "health"
+}

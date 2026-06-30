@@ -7,6 +7,8 @@ from pathlib import Path
 
 
 PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
+SHARED_SEMANTIC_PROTOCOL = "semantic_extraction_protocol.md"
+SEMANTIC_AGENT_PROMPTS = {"source_evidence_agent", "target_evidence_agent"}
 
 PROMPT_FILES = {
     "source_evidence_agent": "source_evidence_agent.md",
@@ -28,7 +30,11 @@ def load_prompt(name: str) -> str:
         filename = PROMPT_FILES[name]
     except KeyError as exc:
         raise KeyError(f"Unknown prompt: {name}") from exc
-    return (PROMPT_DIR / filename).read_text(encoding="utf-8")
+    prompt = (PROMPT_DIR / filename).read_text(encoding="utf-8")
+    if name in SEMANTIC_AGENT_PROMPTS:
+        shared = (PROMPT_DIR / SHARED_SEMANTIC_PROTOCOL).read_text(encoding="utf-8")
+        return shared + "\n\n---\n\n" + prompt
+    return prompt
 
 
 def prompt_manifest() -> dict[str, str]:

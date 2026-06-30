@@ -1,0 +1,15 @@
+{
+  "samples": 7,
+  "outputs": 35,
+  "systems": [
+    "Doubao",
+    "Gemini3.5",
+    "Openai",
+    "Qwen_3.5",
+    "streaming_asr_0518"
+  ],
+  "smoke_sample_id": "en2zh-01-tech_001",
+  "smoke_system_name": "Doubao",
+  "source_input": "data\\user_samples_v05\\source_00_input.jsonl",
+  "target_input": "data\\user_samples_v05\\target_00_input.jsonl"
+}

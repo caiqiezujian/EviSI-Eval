@@ -39,7 +39,7 @@ Python 按预注册 verdict value、importance、severity deduction 和维度权
 
 ### 6. 语义 fallback 伪造结果
 
-每阶段仅允许一次结构修复。修复仍失败就写入 failure，不再由 Python 生成 50 分或随意语义结果。Summary 的本地 fallback 只提示查看结构化结果，不改变分数。
+每阶段最多允许两次结构修复。修复仍失败就写入 failure，不再由 Python 生成 50 分或随意语义结果。Summary 的本地 fallback 只提示查看结构化结果，不改变分数。
 
 ## 当前 Agent 与职责
 
