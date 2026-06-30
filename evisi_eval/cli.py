@@ -36,14 +36,6 @@ def main() -> None:
     run.add_argument("--system-name", action="append", dest="system_names")
     run.add_argument("--limit-samples", type=int)
     run.add_argument("--limit-outputs", type=int)
-    run.add_argument(
-        "--source-card-cache",
-        help="复用已验证的 source_cards.jsonl；源文、结构和 hash 必须匹配",
-    )
-    run.add_argument(
-        "--target-card-cache",
-        help="复用已验证的 target_eval_cards.jsonl；身份、译文和结构必须匹配",
-    )
 
     prepare = sub.add_parser("prepare-data", help="校验并按样本拆分 v0.5 标准输入")
     prepare.add_argument("--samples", required=True)
@@ -72,8 +64,6 @@ def main() -> None:
             system_names=args.system_names,
             limit_samples=args.limit_samples,
             limit_outputs=args.limit_outputs,
-            source_card_cache_path=args.source_card_cache,
-            target_card_cache_path=args.target_card_cache,
         )
         print(json.dumps(result, ensure_ascii=False, indent=2))
     elif args.command == "prepare-data":

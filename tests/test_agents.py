@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from evisi_eval.agents import EvaluationAgentLoop, SourceCardAgent, TargetEvidenceAgent
+from evisi_eval.agents import EvaluationAgentLoop, SourceCardAgent
 from evisi_eval.llm_provider import ScriptedLLMClient
 
 
@@ -209,51 +209,3 @@ def test_reference_and_real_system_name_do_not_leak() -> None:
         serialized = json.dumps(call["payload"], ensure_ascii=False)
         assert "SecretSystem" not in serialized
         assert "reference_translation" not in serialized
-
-
-def test_target_evidence_whitespace_is_mapped_back_to_verbatim_text() -> None:
-    client = ScriptedLLMClient([{
-        "target_anchors": [{
-            "eval_unit_id": "E1", "target_anchor_id": "TA1", "anchor_type": "A-ENT",
-            "anchor_text": "马克", "normalized_meaning": "Mark", "evidence_span": "马 克",
-        }],
-        "target_events": [], "target_relations": [],
-    }])
-    result = TargetEvidenceAgent(client).analyze(
-        "s1", [{"eval_unit_id": "E1", "target_unit": "马克离开了。"}]
-    )
-    assert result.artifact["target_anchors"][0]["evidence_span"] == "马克"
-    assert result.normalization_notes == [
-        "TA1 evidence_span mapped to verbatim target text"
-    ]
-    assert len(client.calls) == 1
-
-
-def test_target_relation_evidence_whitespace_is_mapped_to_selected_unit() -> None:
-    client = ScriptedLLMClient([{
-        "target_anchors": [],
-        "target_events": [
-            {"eval_unit_id": "E1", "target_event_id": "TE1", "event_type": "E-STATE",
-             "event_text": "原因存在", "canonical_meaning": "原因存在", "evidence_span": "原因"},
-            {"eval_unit_id": "E3", "target_event_id": "TE2", "event_type": "E-STATE",
-             "event_text": "结果存在", "canonical_meaning": "结果存在", "evidence_span": "结果"},
-        ],
-        "target_relations": [{
-            "target_relation_id": "TR1", "relation_type": "cause_effect",
-            "relation_basis": "strong_semantic_entailment", "relation_cue": "",
-            "confidence": 0.9,
-            "eval_unit_ids": ["E1", "E3"], "relation_text": "原因导致结果",
-            "relation_meaning": "因果关系", "evidence_spans": ["原 因", "结 果"],
-            "related_target_event_ids": ["TE1", "TE2"],
-        }],
-    }])
-    result = TargetEvidenceAgent(client).analyze("s1", [
-        {"eval_unit_id": "E1", "target_unit": "原因。"},
-        {"eval_unit_id": "E2", "target_unit": "插入说明。"},
-        {"eval_unit_id": "E3", "target_unit": "结果。"},
-    ])
-    relation = result.artifact["target_relations"][0]
-    assert relation["evidence_spans"] == ["原因", "结果"]
-    assert result.normalization_notes == [
-        "TR1 evidence_spans mapped to verbatim target text"
-    ]

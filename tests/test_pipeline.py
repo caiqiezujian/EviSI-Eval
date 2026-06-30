@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 
 from evisi_eval.io_utils import read_jsonl
-from evisi_eval.agents import SourceCardAgent
 from evisi_eval.llm_provider import ScriptedLLMClient
 from evisi_eval.pipeline import compute_metrics, run_pipeline
 from tests.test_agents import (
@@ -129,70 +128,3 @@ def test_metrics_exclude_not_applicable_content_dimensions() -> None:
 
     metrics = compute_metrics(results)
     assert metrics["systems"]["system_a"]["dimension_scores"]["relation_fidelity"] == 50.0
-
-
-def test_pipeline_reuses_validated_external_source_card_cache(tmp_path) -> None:
-    samples = tmp_path / "samples.jsonl"
-    outputs = tmp_path / "outputs.jsonl"
-    cache = tmp_path / "source_cards.jsonl"
-    sample_row = {"sample_id": "s1", "source_text": "Mark left."}
-    _write_jsonl(samples, [sample_row])
-    _write_jsonl(outputs, [{
-        "sample_id": "s1", "system_name": "system_a", "si_translation": "马克离开了。"
-    }])
-    source_client = ScriptedLLMClient([source_response()])
-    card, _ = SourceCardAgent(source_client).build(sample_row)
-    _write_jsonl(cache, [card])
-    evaluation_client = ScriptedLLMClient(
-        _per_output_responses(), provider="scripted", model="fixture-v05"
-    )
-
-    metrics = run_pipeline(
-        str(samples), str(outputs), output_dir=str(tmp_path / "results"), run_name="cached",
-        primary_client=evaluation_client, source_card_cache_path=str(cache),
-    )
-
-    assert metrics["num_results"] == 1
-    assert all(call["task"] != "source_evidence_agent" for call in evaluation_client.calls)
-    manifest = json.loads((tmp_path / "results" / "cached" / "run_manifest.json").read_text("utf-8"))
-    assert manifest["source_card_cache_sha256"]
-
-
-def test_pipeline_reuses_validated_external_target_card_cache(tmp_path) -> None:
-    samples = tmp_path / "samples.jsonl"
-    outputs = tmp_path / "outputs.jsonl"
-    source_cache = tmp_path / "source_cards.jsonl"
-    target_cache = tmp_path / "target_cards.jsonl"
-    sample_row = {"sample_id": "s1", "source_text": "Mark left."}
-    _write_jsonl(samples, [sample_row])
-    _write_jsonl(outputs, [{
-        "sample_id": "s1", "system_name": "system_a", "si_translation": "马克离开了。"
-    }])
-    source_client = ScriptedLLMClient([source_response()])
-    source_card, _ = SourceCardAgent(source_client).build(sample_row)
-    _write_jsonl(source_cache, [source_card])
-    target_card = {
-        "eval_units": alignment_response()["eval_units"],
-        **target_response(),
-        **fluency_response(),
-        **expression_response(),
-        "sample_id": "s1", "system_name": "system_a", "si_translation": "马克离开了。",
-        "metadata": {},
-    }
-    _write_jsonl(target_cache, [target_card])
-    evaluation_client = ScriptedLLMClient([
-        judgement_response(), judgement_response(), summary_response()
-    ], provider="scripted", model="fixture-v05")
-
-    metrics = run_pipeline(
-        str(samples), str(outputs), output_dir=str(tmp_path / "results"), run_name="cached",
-        primary_client=evaluation_client, source_card_cache_path=str(source_cache),
-        target_card_cache_path=str(target_cache),
-    )
-
-    assert metrics["num_results"] == 1
-    assert [call["task"] for call in evaluation_client.calls] == [
-        "primary_judge_agent", "reviewer_agent", "summary_agent"
-    ]
-    manifest = json.loads((tmp_path / "results" / "cached" / "run_manifest.json").read_text("utf-8"))
-    assert manifest["target_card_cache_sha256"]

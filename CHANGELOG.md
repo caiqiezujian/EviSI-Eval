@@ -1,21 +1,7 @@
 # Changelog
 
-## [0.5.1] - 2026-06-30
-
-- Source 与 Target 共用同一套 Anchor/Event/Relation 定义、类型边界、粒度和排除规则。
-- Relation 改为默认不抽取；只有显式线索或置信度不低于 0.85 的强语义蕴含才允许输出。
-- Relation 增加 `relation_basis`、`relation_cue` 和 `confidence`，并强制连接至少两个真实 Event。
-- 增加仅执行 Source 抽取、对齐、Target 抽取的独立脚本和分阶段结果文件。
-- 抽取断点恢复必须匹配 manifest，并重新验证所有缓存；旧协议卡不能作为新协议缓存继续运行。
-
 ## [0.5.0] - 2026-06-29
 
-- 允许 Relation 引用非连续但有序的证据单元，继续拒绝无效、重复或乱序引用。
-- 网络层增加 IncompleteRead/空响应/截断 JSON/连接中断重试，默认超时调整为 900 秒。
-- 最大结构修复次数由 1 次调整为 2 次，降低单个 evidence span 错误导致整条样本失败的概率。
-- 增加经过重新验证的 Source/Target Card 跨 run 缓存复用，避免网络失败后重复执行已完成阶段。
-- 修复 judgement 引用未知 target item 时 validator 抛出 KeyError 的问题。
-- 增加目标 evidence 空格差异到逐字原文的确定性归位，并记录 normalization notes。
 - 修复全 uncertain 维度被错误显示为 0 分的问题；改为 `no_decisions` 和空最终分数。
 - 修复系统正式均分混入 provisional 结果的问题；正式与临时聚合完全分离。
 - 源证据卡改为每个样本一次构建并冻结，多个系统共享同一 source card。

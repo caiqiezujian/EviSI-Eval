@@ -24,8 +24,6 @@
 
 包含 `source_units`、`source_anchors`、`source_events`、`source_relations`。所有源项目都有 `importance: 1|2|3` 和逐字证据。卡片 metadata 包含 `source_card_hash` 与冻结标记。
 
-Source 与 Target 的 Anchor/Event/Relation 必须共同遵守 `prompts/semantic_extraction_protocol.md`。两侧使用相同定义、类型边界和粒度，但独立、盲抽取：Source 不看译文，Target 不看原文。
-
 ## Eval Unit
 
 ```json
@@ -51,18 +49,6 @@ Source 与 Target 的 Anchor/Event/Relation 必须共同遵守 `prompts/semantic
 ```
 
 Event 和 Relation 分别替换 source/target ID 字段。最终结果会增加 `review_verdict`、`review_confidence` 和 `resolution`。
-
-Relation 的 `source_unit_ids` / `eval_unit_ids` 表示实际提供关系证据的单元，必须存在、唯一并按文本顺序排列，但允许非连续。远距离语篇关系不需要把无证据的中间单元加入 ID 数组。
-
-每条 Relation 还必须满足：
-
-- `related_source_event_ids` / `related_target_event_ids` 至少引用两个不同且真实存在的 Event；
-- `relation_basis` 只能是 `explicit_cue` 或 `strong_semantic_entailment`；
-- `explicit_cue` 必须提供位于证据单元中的逐字 `relation_cue`；
-- `strong_semantic_entailment` 的 `relation_cue` 必须为空，且 `confidence >= 0.85`；
-- 相邻、问答、同话题和文本先后本身不构成 Relation；没有合格关系时数组必须为空。
-
-纯抽取产物使用 `schemas/target_semantic_card.schema.json`。旧卡缺少上述 Relation 依据字段，因此不会通过当前协议验证。
 
 ## 表达问题
 

@@ -12,9 +12,8 @@ class ProviderConfig:
     api_key: str
     model: str
     base_url: str
-    timeout_seconds: int = 900
-    max_retries: int = 3
-    max_output_tokens: int = 16384
+    timeout_seconds: int = 180
+    max_retries: int = 2
 
 
 _DEFAULTS: dict[str, dict[str, str]] = {
@@ -73,9 +72,8 @@ def get_provider_config(provider: str | None = None) -> ProviderConfig:
         api_key=api_key,
         model=model,
         base_url=base_url.rstrip("/"),
-        timeout_seconds=_int_setting("EVISI_TIMEOUT_SECONDS", 900),
-        max_retries=_int_setting("EVISI_MAX_RETRIES", 3),
-        max_output_tokens=_int_setting("EVISI_MAX_OUTPUT_TOKENS", 16384),
+        timeout_seconds=_int_setting("EVISI_TIMEOUT_SECONDS", 180),
+        max_retries=_int_setting("EVISI_MAX_RETRIES", 2),
     )
 
 

@@ -41,8 +41,6 @@ python -m pytest -q
 python -m evisi_eval check-provider --provider deepseek
 ```
 
-长样本建议保留默认配置：`EVISI_TIMEOUT_SECONDS=900`、`EVISI_MAX_RETRIES=3`、`EVISI_MAX_OUTPUT_TOKENS=16384`。客户端会自动重试 `IncompleteRead`、空响应、截断 JSON 和连接中断。
-
 ## 3. 转换宽表数据
 
 ```powershell
@@ -53,8 +51,6 @@ python -m evisi_eval import-data `
 ```
 
 如果文件已经符合 README 中的两份长表 JSONL 契约，可以跳过此步。
-
-网络失败后如需在新 run 中复用已完成阶段，可使用 `--source-card-cache` 和 `--target-card-cache`。缓存不是盲信复用：运行前会重新检查输入文本、ID、逐字证据、结构和 hash，缓存文件 SHA-256 会写入 `run_manifest.json`。
 
 ## 4. 先跑一个样本
 

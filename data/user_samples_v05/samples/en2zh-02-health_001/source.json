@@ -1,8 +1,0 @@
-{
-  "sample_id": "en2zh-02-health_001",
-  "source_text": "So basically the current health, uh, health care system is is is more of a medical system. So most of the time when we are talking about health care care system, we are talking about improve, um, the um, efficiency, the accessibility, um, of good doctors. So what we are trying to do now is we are trying to digitize, using a different type of uh devices as well as say molecule molecular -cular profiles uh to profile the the the so called health status of uh human so that we can actually track um, how, uh, people's, uh, how people's uh health status are changing over time, um so that we can actually, um, pre- precaution on people about whether you're going to have a uh the medical event. So so the the the idea of, I think uh one, one of the direction for a future um health care system is trying to preserve people in a status of being healthy rather than, um, how we can deal with, um, the medical issues when people really get some uh severe symptom.",
-  "reference_translation": "当前的医疗保健系统其实更像一个医疗系统。大多数时候，我们在谈论医疗保健系统时， 其实谈的是提高医生的诊疗效率，让更多人接触到优质医生资源。 我们目前正在尝试往数字化方向发展，利用不同类型的设备以及分子图谱之类的手段描绘所谓的人体健康状况， 这样我们就能真正追踪人们的健康状况随时间的变化。 这样一来，我们就能预警人们是否需要看医生。 所以我认为未来医疗保健系统的一大努力方向是，让人们保持健康状态，而不是等人们真正出现严重症状了，再去想怎么处理这些医疗问题。",
-  "src_lang": "en",
-  "tgt_lang": "zh",
-  "domain": "health"
-}

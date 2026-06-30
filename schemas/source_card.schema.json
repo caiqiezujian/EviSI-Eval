@@ -35,8 +35,8 @@
       "properties": {"source_event_id": {"type": "string", "pattern": "^SE[1-9][0-9]*$"}, "event_type": {"enum": ["E-ACT", "E-STATE", "E-CHANGE", "E-JUDG", "E-REL", "E-SPEECH", "E-MODAL"]}, "importance": {"$ref": "#/$defs/importance"}}
     },
     "source_relation": {
-      "type": "object", "required": ["source_relation_id", "relation_type", "relation_basis", "relation_cue", "confidence", "source_unit_ids", "relation_text", "relation_meaning", "evidence_spans", "related_source_event_ids", "importance"],
-      "properties": {"source_relation_id": {"type": "string", "pattern": "^SR[1-9][0-9]*$"}, "relation_type": {"type": "string"}, "relation_basis": {"enum": ["explicit_cue", "strong_semantic_entailment"]}, "relation_cue": {"type": "string"}, "confidence": {"type": "number", "minimum": 0, "maximum": 1}, "importance": {"$ref": "#/$defs/importance"}}
+      "type": "object", "required": ["source_relation_id", "relation_type", "source_unit_ids", "relation_text", "relation_meaning", "evidence_spans", "related_source_event_ids", "importance"],
+      "properties": {"source_relation_id": {"type": "string", "pattern": "^SR[1-9][0-9]*$"}, "relation_type": {"type": "string"}, "importance": {"$ref": "#/$defs/importance"}}
     }
   }
 }

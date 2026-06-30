@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -20,10 +19,6 @@ from .validation import (
     PROTOCOL_VERSION,
     SEVERITY_DEDUCTIONS,
     VERDICT_VALUES,
-    validate_alignment_artifact,
-    validate_delivery_artifact,
-    validate_source_card_artifact,
-    validate_target_evidence_artifact,
 )
 
 
@@ -52,8 +47,6 @@ def run_pipeline(
     limit_outputs: int | None = None,
     primary_client: LLMClient | None = None,
     review_client: LLMClient | None = None,
-    source_card_cache_path: str | None = None,
-    target_card_cache_path: str | None = None,
 ) -> dict[str, Any]:
     all_samples = [_normalize_sample(row) for row in read_jsonl(samples_path)]
     all_outputs = [_normalize_output(row) for row in read_jsonl(outputs_path)]
@@ -86,10 +79,7 @@ def run_pipeline(
         }
     )
     run_dir.mkdir(parents=True, exist_ok=True)
-    manifest = _manifest(
-        samples_path, outputs_path, samples, outputs, primary_client, review_client,
-        source_card_cache_path, target_card_cache_path,
-    )
+    manifest = _manifest(samples_path, outputs_path, samples, outputs, primary_client, review_client)
     if resume and paths["manifest"].exists():
         _assert_resume_compatible(read_json(paths["manifest"]), manifest)
     elif not resume:
@@ -105,16 +95,6 @@ def run_pipeline(
         str(row["sample_id"]): row
         for row in (read_jsonl(paths["source_cards"]) if resume else [])
     }
-    sample_by_id = {str(row["sample_id"]): row for row in samples}
-    if source_card_cache_path:
-        for cached_card in read_jsonl(source_card_cache_path):
-            sample_id = str(cached_card.get("sample_id") or "")
-            sample = sample_by_id.get(sample_id)
-            if sample is None or sample_id in cards:
-                continue
-            _validate_cached_source_card(cached_card, sample)
-            cards[sample_id] = cached_card
-            append_jsonl(paths["source_cards"], cached_card)
     source_agent = SourceCardAgent(primary_client)
     for sample in samples:
         sample_id = str(sample["sample_id"])
@@ -132,7 +112,6 @@ def run_pipeline(
     results = read_jsonl(paths["score_06_final_results"]) if resume else []
     completed = {(str(row["sample_id"]), str(row["system_name"])) for row in results}
     evaluation_loop = EvaluationAgentLoop(primary_client, review_client)
-    target_card_cache = _load_target_card_cache(target_card_cache_path)
 
     def target_sink(stage: str, artifact: dict[str, Any]) -> None:
         append_jsonl(paths[stage], artifact)
@@ -156,13 +135,7 @@ def run_pipeline(
             append_jsonl(paths["failures"], failure)
             continue
         try:
-            cached_target_card = target_card_cache.get(key)
-            if cached_target_card is not None:
-                _validate_cached_target_card(cached_target_card, source_card, output)
-            result, _ = evaluation_loop.run(
-                source_card, output, target_sink, score_sink,
-                cached_target_card=cached_target_card,
-            )
+            result, _ = evaluation_loop.run(source_card, output, target_sink, score_sink)
             results.append(result)
             completed.add(key)
             append_jsonl(
@@ -324,8 +297,7 @@ def _select_rows(
 
 def _manifest(
     samples_path: str, outputs_path: str, samples: list[dict[str, Any]], outputs: list[dict[str, Any]],
-    primary: LLMClient, reviewer: LLMClient, source_card_cache_path: str | None,
-    target_card_cache_path: str | None,
+    primary: LLMClient, reviewer: LLMClient,
 ) -> dict[str, Any]:
     return {
         "protocol_version": PROTOCOL_VERSION,
@@ -346,12 +318,6 @@ def _manifest(
         "primary_model": primary.model_name,
         "review_provider": reviewer.provider_name,
         "review_model": reviewer.model_name,
-        "source_card_cache_sha256": (
-            _file_hash(source_card_cache_path) if source_card_cache_path else None
-        ),
-        "target_card_cache_sha256": (
-            _file_hash(target_card_cache_path) if target_card_cache_path else None
-        ),
     }
 
 
@@ -369,64 +335,6 @@ def _implementation_hash() -> str:
 
 def _file_hash(path: str) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
-
-
-def _validate_cached_source_card(card: dict[str, Any], sample: dict[str, Any]) -> None:
-    if card.get("source_text") != sample.get("source_text"):
-        raise ValueError(f"cached source card text mismatch for sample_id={sample['sample_id']}")
-    issues = validate_source_card_artifact(card, str(sample["source_text"]))
-    if issues:
-        raise ValueError(
-            f"cached source card failed validation for sample_id={sample['sample_id']}: "
-            + "; ".join(issues)
-        )
-    expected_hash = str(card.get("metadata", {}).get("source_card_hash") or "")
-    payload = {key: value for key, value in card.items() if key != "metadata"}
-    actual_hash = hashlib.sha256(
-        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    ).hexdigest()
-    if not expected_hash or expected_hash != actual_hash:
-        raise ValueError(f"cached source card hash mismatch for sample_id={sample['sample_id']}")
-
-
-def _load_target_card_cache(path: str | None) -> dict[tuple[str, str], dict[str, Any]]:
-    if not path:
-        return {}
-    return {
-        (str(row.get("sample_id") or ""), str(row.get("system_name") or "")): row
-        for row in read_jsonl(path)
-    }
-
-
-def _validate_cached_target_card(
-    card: dict[str, Any], source_card: dict[str, Any], output: dict[str, Any]
-) -> None:
-    sample_id = str(output["sample_id"])
-    system_name = str(output["system_name"])
-    translation = str(output["si_translation"])
-    if card.get("sample_id") != sample_id or card.get("system_name") != system_name:
-        raise ValueError(f"cached target card identity mismatch for {sample_id}/{system_name}")
-    if card.get("si_translation") != translation:
-        raise ValueError(f"cached target card translation mismatch for {sample_id}/{system_name}")
-    issues = validate_alignment_artifact(
-        {"eval_units": card.get("eval_units")}, source_card["source_units"], translation
-    )
-    target_units = [
-        {"eval_unit_id": row.get("eval_unit_id"), "target_unit": row.get("target_unit", "")}
-        for row in card.get("eval_units", []) if isinstance(row, dict)
-    ]
-    issues.extend(validate_target_evidence_artifact(card, target_units))
-    issues.extend(validate_delivery_artifact(
-        card, translation, "fluency_issues", "fluency_assessment", "F"
-    ))
-    issues.extend(validate_delivery_artifact(
-        card, translation, "si_expression_issues", "si_expression_assessment", "X"
-    ))
-    if issues:
-        raise ValueError(
-            f"cached target card failed validation for {sample_id}/{system_name}: "
-            + "; ".join(issues)
-        )
 
 
 def _mean(values: list[float]) -> float | None:

@@ -39,7 +39,6 @@ RELATION_TYPES = {
     "difference", "degree", "elaboration", "attribution", "exemplification", "exception",
     "conclusion",
 }
-RELATION_BASES = {"explicit_cue", "strong_semantic_entailment"}
 
 
 def validate_source_card_artifact(artifact: dict[str, Any], source_text: str) -> list[str]:
@@ -358,57 +357,30 @@ def _validate_relations(
     unit_id_key = "source_unit_id" if source_side else "eval_unit_id"
     unit_text_key = "source_unit" if source_side else "target_unit"
     event_id_key = f"{side}_event_id"
-    event_unit_key = "source_unit_id" if source_side else "eval_unit_id"
     related_key = f"related_{side}_event_ids"
     rows = _records(artifact.get(list_key))
     _sequential_ids(rows, relation_id_key, "SR" if source_side else "TR", list_key, issues)
     unit_by_id = {str(row.get(unit_id_key)): str(row.get(unit_text_key) or "") for row in units}
     unit_order = {key: index for index, key in enumerate(unit_by_id)}
-    event_by_id = {str(row.get(event_id_key)): row for row in events}
-    event_ids = set(event_by_id)
+    event_ids = {str(row.get(event_id_key)) for row in events}
     for row in rows:
         relation_id = str(row.get(relation_id_key) or "")
         selected = _strings(row.get(unit_ids_key))
         indexes = [unit_order[item] for item in selected if item in unit_order]
         if not selected or len(indexes) != len(selected):
             issues.append(f"relation {relation_id} references invalid units")
-        elif len(indexes) != len(set(indexes)) or indexes != sorted(indexes):
-            issues.append(f"relation {relation_id} units must be unique and ordered")
+        elif indexes != list(range(min(indexes), max(indexes) + 1)):
+            issues.append(f"relation {relation_id} units must be adjacent and ordered")
         if not str(row.get("relation_text") or "").strip() or not str(row.get("relation_meaning") or "").strip():
             issues.append(f"relation {relation_id} is missing semantic fields")
         if row.get("relation_type") not in RELATION_TYPES:
             issues.append(f"relation {relation_id} has unsupported relation_type")
-        basis = str(row.get("relation_basis") or "")
-        if basis not in RELATION_BASES:
-            issues.append(f"relation {relation_id} has unsupported relation_basis")
-        cue = str(row.get("relation_cue") or "")
-        confidence = row.get("confidence")
-        if (
-            not isinstance(confidence, (int, float))
-            or isinstance(confidence, bool)
-            or not 0 <= confidence <= 1
-        ):
-            issues.append(f"relation {relation_id} confidence must be between 0 and 1")
-        elif basis == "strong_semantic_entailment" and confidence < 0.85:
-            issues.append(f"implicit relation {relation_id} confidence must be at least 0.85")
         evidence = _strings(row.get("evidence_spans"))
         selected_texts = [unit_by_id[item] for item in selected if item in unit_by_id]
         if not evidence or any(not any(span in text for text in selected_texts) for span in evidence):
             issues.append(f"relation {relation_id} has invalid evidence_spans")
-        if basis == "explicit_cue" and (not cue or not any(cue in text for text in selected_texts)):
-            issues.append(f"explicit relation {relation_id} needs a verbatim relation_cue")
-        if basis == "strong_semantic_entailment" and cue:
-            issues.append(f"implicit relation {relation_id} must use an empty relation_cue")
-        related_events = _strings(row.get(related_key))
-        if len(related_events) < 2 or len(related_events) != len(set(related_events)):
-            issues.append(f"relation {relation_id} must link at least two distinct events")
-        if any(item not in event_ids for item in related_events):
+        if any(item not in event_ids for item in _strings(row.get(related_key))):
             issues.append(f"relation {relation_id} references unknown event")
-        selected_set = set(selected)
-        for event_id in related_events:
-            event = event_by_id.get(event_id)
-            if event is not None and str(event.get(event_unit_key) or "") not in selected_set:
-                issues.append(f"relation {relation_id} links an event outside its selected units")
         if source_side and row.get("importance") not in {1, 2, 3}:
             issues.append(f"relation {relation_id} importance must be 1, 2, or 3")
     return issues
@@ -465,16 +437,11 @@ def _validate_judgement_kind(
         if any(item not in target_by_id for item in target_ids):
             issues.append(f"judgement {judgement_id} references unknown target item")
         for target_id in target_ids:
-            if target_id not in target_by_id:
-                continue
             target_eval_ids = _item_unit_ids(target_by_id[target_id], kind)
             if any(item not in eval_ids for item in target_eval_ids):
                 issues.append(f"judgement {judgement_id} target item is outside cited eval units")
         target_evidence = _strings(row.get("target_evidence_spans"))
-        allowed_evidence = [
-            span for item in target_ids if item in target_by_id
-            for span in _item_evidence(target_by_id[item])
-        ]
+        allowed_evidence = [span for item in target_ids for span in _item_evidence(target_by_id[item])]
         if any(span not in allowed_evidence for span in target_evidence):
             issues.append(f"judgement {judgement_id} target evidence is not from cited target items")
         verdict = str(row.get("verdict") or "")

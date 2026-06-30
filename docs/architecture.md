@@ -8,8 +8,6 @@
 - **证据局部性**：内容判定只能使用直接对齐单元及前后各一个相邻单元，避免全篇碰巧匹配。
 - **语义与数学分离**：LLM 负责语义结构和 verdict，Python 负责验证、覆盖率和分数计算。
 - **失败显式化**：结构修复仍失败则记录 failure，不生成任意语义 fallback。
-- **抽取协议对称**：SourceEvidence 与 TargetEvidence 运行时加载同一共享语义协议，保证 Anchor/Event/Relation 定义一致；两侧仍保持信息隔离。
-- **关系稀疏性**：Relation 默认不存在，不把相邻、问答、同话题或文本顺序转换成语义关系。
 
 ## 2. 执行图
 
@@ -54,7 +52,7 @@
 
 ## 4. 验证和修复
 
-每个 LLM 阶段执行一次生成；结构不合格时最多执行两次结构修复。验证覆盖：
+每个 LLM 阶段执行一次生成和一次结构修复机会。验证覆盖：
 
 - 必需数组和字段类型；
 - ID 连续性与引用完整性；
@@ -71,8 +69,6 @@ Repair 只能修结构，不能重做语义。修复后仍失败，当前样本/
 ## 5. 复现与恢复
 
 `run_manifest.json` 记录输入哈希、Prompt 哈希、核心实现哈希、模型和计分策略。`--resume` 只有在这些字段全部一致时才允许继续，以免把不同实验条件混入同一 run。
-
-纯抽取流程使用独立的 `extraction_manifest.json`，只执行 SourceEvidence、Alignment 和 TargetEvidence。恢复时除核对输入、模型、Prompt 与实现哈希外，还会重新验证已保存的 Source Card、Alignment 和 Target Semantic Card。缺少 manifest、缺少新 Relation 字段或逐字证据失效的旧产物都会被拒绝；应使用新的 `run-name` 重新生成。
 
 ## 6. 客观性边界
 
