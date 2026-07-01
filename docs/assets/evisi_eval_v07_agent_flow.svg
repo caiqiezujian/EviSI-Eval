@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1400" width="1920" height="1400" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1560" width="1920" height="1560" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#0a0e27"/>
@@ -30,31 +30,33 @@
       <stop offset="0%" stop-color="#ec4899" stop-opacity="0.95"/>
       <stop offset="100%" stop-color="#be185d" stop-opacity="0.95"/>
     </linearGradient>
+    <linearGradient id="grad-warn" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.9"/>
+    </linearGradient>
     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="3" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
     <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="6" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
     <filter id="card-shadow" x="-20%" y="-20%" width="140%" height="140%">
       <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
       <feOffset dx="0" dy="2" result="offsetblur"/>
-      <feComponentTransfer>
-        <feFuncA type="linear" slope="0.4"/>
-      </feComponentTransfer>
-      <feMerge>
-        <feMergeNode/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
+      <feComponentTransfer><feFuncA type="linear" slope="0.4"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
+    <!-- Agent icon (robot/AI brain) -->
+    <symbol id="agent-icon" viewBox="0 0 24 24">
+      <rect x="4" y="8" width="16" height="12" rx="3" fill="#0a0e27" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="9" cy="14" r="1.5" fill="currentColor"/>
+      <circle cx="15" cy="14" r="1.5" fill="currentColor"/>
+      <rect x="11" y="11" width="2" height="2" rx="0.5" fill="currentColor"/>
+      <line x1="12" y1="4" x2="12" y2="8" stroke="currentColor" stroke-width="1.5"/>
+      <circle cx="12" cy="3" r="1.5" fill="currentColor"/>
+    </symbol>
     <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#00d4ff"/>
     </marker>
@@ -67,161 +69,230 @@
     <marker id="arrow-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#a78bfa"/>
     </marker>
+    <marker id="arrow-warn" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#fbbf24"/>
+    </marker>
   </defs>
 
-  <rect width="1920" height="1400" fill="url(#bg)"/>
+  <rect width="1920" height="1560" fill="url(#bg)"/>
   <g stroke="#1e3a6e" stroke-width="0.5" opacity="0.2">
-    <line x1="0" y1="160" x2="1920" y2="160"/>
-    <line x1="0" y1="400" x2="1920" y2="400"/>
-    <line x1="0" y1="640" x2="1920" y2="640"/>
+    <line x1="0" y1="180" x2="1920" y2="180"/>
+    <line x1="0" y1="420" x2="1920" y2="420"/>
+    <line x1="0" y1="660" x2="1920" y2="660"/>
     <line x1="0" y1="900" x2="1920" y2="900"/>
-    <line x1="0" y1="1160" x2="1920" y2="1160"/>
+    <line x1="0" y1="1180" x2="1920" y2="1180"/>
+    <line x1="0" y1="1380" x2="1920" y2="1380"/>
   </g>
-  <circle cx="100" cy="1240" r="220" fill="none" stroke="#00d4ff" stroke-width="0.5" opacity="0.06"/>
+  <circle cx="100" cy="1500" r="220" fill="none" stroke="#00d4ff" stroke-width="0.5" opacity="0.06"/>
   <circle cx="1820" cy="80" r="180" fill="none" stroke="#ec4899" stroke-width="0.5" opacity="0.06"/>
 
   <!-- TITLE -->
   <g transform="translate(60, 50)">
     <rect x="0" y="0" width="1800" height="76" rx="38" fill="url(#grad-joint)" opacity="0.18" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.5"/>
-    <text x="40" y="48" font-size="30" font-weight="700" fill="#f8fafc" filter="url(#glow)">EviSI-Eval v0.7 — 14 LLM Agent Calls · Joint Card · Deterministic Scoring</text>
+    <text x="40" y="48" font-size="28" font-weight="700" fill="#f8fafc" filter="url(#glow)">EviSI-Eval v0.7 — 14 LLM Agents · Joint Card · Repair Loop · Deterministic Scoring</text>
   </g>
 
-  <!-- ROW 1: SOURCE -->
+  <!-- ============== SECTION 1: SOURCE + REFERENCE (with threaded example on right) ============== -->
+  <!-- LEFT: 8 LLM cards (4 source + 4 reference) stacked -->
   <g transform="translate(60, 160)">
-    <rect x="0" y="0" width="1800" height="220" rx="14" fill="#0d1b3e" fill-opacity="0.4" stroke="#00d4ff" stroke-width="1" stroke-opacity="0.25"/>
+    <rect x="0" y="0" width="1180" height="450" rx="14" fill="#0d1b3e" fill-opacity="0.3" stroke="#1e3a6e" stroke-width="1" stroke-opacity="0.3"/>
+    <text x="20" y="32" font-size="14" font-weight="700" fill="#94a3b8" letter-spacing="2">SECTION 1 — JOINT EXTRACTION  ·  8 LLM calls / sample</text>
+
+    <!-- Source row -->
+    <g transform="translate(20, 60)">
+      <rect width="1140" height="160" rx="10" fill="#0a0e27" fill-opacity="0.4" stroke="#00d4ff" stroke-width="1" stroke-opacity="0.2"/>
+      <g transform="translate(16, 14)">
+        <rect width="160" height="26" rx="5" fill="url(#grad-source)" filter="url(#glow)"/>
+        <text x="80" y="18" font-size="12" font-weight="700" fill="#0a0e27" text-anchor="middle">SOURCE  SIDE</text>
+        <text x="172" y="18" font-size="11" fill="#94a3b8">4 LLM calls · Source-only · never sees any translation</text>
+      </g>
+      <!-- 4 source agents with icons -->
+      <g transform="translate(16, 52)">
+        <!-- Phase 1 -->
+        <g transform="translate(0, 0)" color="#00d4ff">
+          <rect width="266" height="92" rx="9" fill="url(#grad-source)" filter="url(#card-shadow)"/>
+          <use href="#agent-icon" x="10" y="8" width="20" height="20"/>
+          <rect x="0" y="0" width="40" height="92" rx="9" fill="#0a0e27" fill-opacity="0.5"/>
+          <text x="20" y="42" font-size="20" font-weight="800" fill="#f8fafc" text-anchor="middle">1</text>
+          <text x="20" y="64" font-size="8" font-weight="700" fill="#00d4ff" text-anchor="middle" letter-spacing="1">PHASE</text>
+          <text x="52" y="32" font-size="14" font-weight="700" fill="#f8fafc">Source Segment</text>
+          <text x="52" y="52" font-size="10" fill="#cbd5e1">in  source_text</text>
+          <text x="52" y="68" font-size="10" fill="#cbd5e1">out  source_segments[]</text>
+          <text x="52" y="84" font-size="9" font-style="italic" fill="#94a3b8">"~2 sent / segment"</text>
+        </g>
+        <g transform="translate(270, 40)"><path d="M 0 6 L 12 6" stroke="#00d4ff" stroke-width="2" fill="none" marker-end="url(#arrow-blue)"/></g>
+        <!-- Phase 2 -->
+        <g transform="translate(290, 0)" color="#00d4ff">
+          <rect width="266" height="92" rx="9" fill="url(#grad-source)" filter="url(#card-shadow)"/>
+          <use href="#agent-icon" x="10" y="8" width="20" height="20"/>
+          <rect x="0" y="0" width="40" height="92" rx="9" fill="#0a0e27" fill-opacity="0.5"/>
+          <text x="20" y="42" font-size="20" font-weight="800" fill="#f8fafc" text-anchor="middle">2</text>
+          <text x="20" y="64" font-size="8" font-weight="700" fill="#00d4ff" text-anchor="middle" letter-spacing="1">PHASE</text>
+          <text x="52" y="32" font-size="14" font-weight="700" fill="#f8fafc">Source Anchor</text>
+          <text x="52" y="52" font-size="10" fill="#cbd5e1">in  source_segments</text>
+          <text x="52" y="68" font-size="10" fill="#cbd5e1">out  source_anchors[]</text>
+          <text x="52" y="84" font-size="9" font-style="italic" fill="#94a3b8">"entity / term / quantity"</text>
+        </g>
+        <g transform="translate(560, 40)"><path d="M 0 6 L 12 6" stroke="#00d4ff" stroke-width="2" fill="none" marker-end="url(#arrow-blue)"/></g>
+        <!-- Phase 3 -->
+        <g transform="translate(580, 0)" color="#00d4ff">
+          <rect width="266" height="92" rx="9" fill="url(#grad-source)" filter="url(#card-shadow)"/>
+          <use href="#agent-icon" x="10" y="8" width="20" height="20"/>
+          <rect x="0" y="0" width="40" height="92" rx="9" fill="#0a0e27" fill-opacity="0.5"/>
+          <text x="20" y="42" font-size="20" font-weight="800" fill="#f8fafc" text-anchor="middle">3</text>
+          <text x="20" y="64" font-size="8" font-weight="700" fill="#00d4ff" text-anchor="middle" letter-spacing="1">PHASE</text>
+          <text x="52" y="32" font-size="14" font-weight="700" fill="#f8fafc">Source Event</text>
+          <text x="52" y="52" font-size="10" fill="#cbd5e1">in  source_segments</text>
+          <text x="52" y="68" font-size="10" fill="#cbd5e1">out  source_events[]</text>
+          <text x="52" y="84" font-size="9" font-style="italic" fill="#94a3b8">"action / state / speech"</text>
+        </g>
+        <g transform="translate(850, 40)"><path d="M 0 6 L 12 6" stroke="#00d4ff" stroke-width="2" fill="none" marker-end="url(#arrow-blue)"/></g>
+        <!-- Phase 4 -->
+        <g transform="translate(870, 0)" color="#00d4ff">
+          <rect width="266" height="92" rx="9" fill="url(#grad-source)" filter="url(#card-shadow)"/>
+          <use href="#agent-icon" x="10" y="8" width="20" height="20"/>
+          <rect x="0" y="0" width="40" height="92" rx="9" fill="#0a0e27" fill-opacity="0.5"/>
+          <text x="20" y="42" font-size="20" font-weight="800" fill="#f8fafc" text-anchor="middle">4</text>
+          <text x="20" y="64" font-size="8" font-weight="700" fill="#00d4ff" text-anchor="middle" letter-spacing="1">PHASE</text>
+          <text x="52" y="32" font-size="14" font-weight="700" fill="#f8fafc">Source Relation</text>
+          <text x="52" y="52" font-size="10" fill="#cbd5e1">in  source_events</text>
+          <text x="52" y="68" font-size="10" fill="#cbd5e1">out  source_relations[]</text>
+          <text x="52" y="84" font-size="9" font-style="italic" fill="#94a3b8">"16 relation types"</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- Reference row -->
+    <g transform="translate(20, 240)">
+      <rect width="1140" height="160" rx="10" fill="#0a0e27" fill-opacity="0.4" stroke="#ff9a3c" stroke-width="1" stroke-opacity="0.2"/>
+      <g transform="translate(16, 14)">
+        <rect width="180" height="26" rx="5" fill="url(#grad-ref)" filter="url(#glow)"/>
+        <text x="90" y="18" font-size="12" font-weight="700" fill="#0a0e27" text-anchor="middle">REFERENCE  SIDE</text>
+        <text x="194" y="18" font-size="11" fill="#94a3b8">4 LLM calls · sees source_card + ref · <tspan font-weight="700" fill="#ff9a3c">auxiliary, NOT gold</tspan></text>
+      </g>
+      <g transform="translate(16, 52)">
+        <!-- Phase 5 -->
+        <g transform="translate(0, 0)" color="#ff9a3c">
+          <rect width="266" height="92" rx="9" fill="url(#grad-ref)" filter="url(#card-shadow)"/>
+          <use href="#agent-icon" x="10" y="8" width="20" height="20"/>
+          <rect x="0" y="0" width="40" height="92" rx="9" fill="#0a0e27" fill-opacity="0.5"/>
+          <text x="20" y="42" font-size="20" font-weight="800" fill="#f8fafc" text-anchor="middle">5</text>
+          <text x="20" y="64" font-size="8" font-weight="700" fill="#ff9a3c" text-anchor="middle" letter-spacing="1">PHASE</text>
+          <text x="52" y="32" font-size="14" font-weight="700" fill="#f8fafc">Reference Align</text>
+          <text x="52" y="52" font-size="10" fill="#fff7ed">in  ref + source_segs</text>
+          <text x="52" y="68" font-size="10" fill="#fff7ed">out  reference_segments[]</text>
+          <text x="52" y="84" font-size="9" font-style="italic" fill="#fde6c8">"len(ref) == len(source)"</text>
+        </g>
+        <g transform="translate(270, 40)"><path d="M 0 6 L 12 6" stroke="#ff9a3c" stroke-width="2" fill="none" marker-end="url(#arrow-orange)"/></g>
+        <!-- Phase 6 -->
+        <g transform="translate(290, 0)" color="#ff9a3c">
+          <rect width="266" height="92" rx="9" fill="url(#grad-ref)" filter="url(#card-shadow)"/>
+          <use href="#agent-icon" x="10" y="8" width="20" height="20"/>
+          <rect x="0" y="0" width="40" height="92" rx="9" fill="#0a0e27" fill-opacity="0.5"/>
+          <text x="20" y="42" font-size="20" font-weight="800" fill="#f8fafc" text-anchor="middle">6</text>
+          <text x="20" y="64" font-size="8" font-weight="700" fill="#ff9a3c" text-anchor="middle" letter-spacing="1">PHASE</text>
+          <text x="52" y="32" font-size="14" font-weight="700" fill="#f8fafc">Reference Anchor</text>
+          <text x="52" y="52" font-size="10" fill="#fff7ed">in  source_anchors + ref</text>
+          <text x="52" y="68" font-size="10" fill="#fff7ed">out  reference_anchors[]</text>
+          <text x="52" y="84" font-size="9" font-style="italic" fill="#fde6c8">"positional, same count"</text>
+        </g>
+        <g transform="translate(560, 40)"><path d="M 0 6 L 12 6" stroke="#ff9a3c" stroke-width="2" fill="none" marker-end="url(#arrow-orange)"/></g>
+        <!-- Phase 7 -->
+        <g transform="translate(580, 0)" color="#ff9a3c">
+          <rect width="266" height="92" rx="9" fill="url(#grad-ref)" filter="url(#card-shadow)"/>
+          <use href="#agent-icon" x="10" y="8" width="20" height="20"/>
+          <rect x="0" y="0" width="40" height="92" rx="9" fill="#0a0e27" fill-opacity="0.5"/>
+          <text x="20" y="42" font-size="20" font-weight="800" fill="#f8fafc" text-anchor="middle">7</text>
+          <text x="20" y="64" font-size="8" font-weight="700" fill="#ff9a3c" text-anchor="middle" letter-spacing="1">PHASE</text>
+          <text x="52" y="32" font-size="14" font-weight="700" fill="#f8fafc">Reference Event</text>
+          <text x="52" y="52" font-size="10" fill="#fff7ed">in  source_events + ref</text>
+          <text x="52" y="68" font-size="10" fill="#fff7ed">out  reference_events[]</text>
+          <text x="52" y="84" font-size="9" font-style="italic" fill="#fde6c8">"type / imp inherited"</text>
+        </g>
+        <g transform="translate(850, 40)"><path d="M 0 6 L 12 6" stroke="#ff9a3c" stroke-width="2" fill="none" marker-end="url(#arrow-orange)"/></g>
+        <!-- Phase 8 -->
+        <g transform="translate(870, 0)" color="#ff9a3c">
+          <rect width="266" height="92" rx="9" fill="url(#grad-ref)" filter="url(#card-shadow)"/>
+          <use href="#agent-icon" x="10" y="8" width="20" height="20"/>
+          <rect x="0" y="0" width="40" height="92" rx="9" fill="#0a0e27" fill-opacity="0.5"/>
+          <text x="20" y="42" font-size="20" font-weight="800" fill="#f8fafc" text-anchor="middle">8</text>
+          <text x="20" y="64" font-size="8" font-weight="700" fill="#ff9a3c" text-anchor="middle" letter-spacing="1">PHASE</text>
+          <text x="52" y="32" font-size="14" font-weight="700" fill="#f8fafc">Reference Relation</text>
+          <text x="52" y="52" font-size="10" fill="#fff7ed">in  source_relations</text>
+          <text x="52" y="68" font-size="10" fill="#fff7ed">out  reference_relations[]</text>
+          <text x="52" y="84" font-size="9" font-style="italic" fill="#fde6c8">"preserved: true / false"</text>
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <!-- RIGHT: THREADED EXAMPLE -->
+  <g transform="translate(1260, 160)">
+    <rect x="0" y="0" width="600" height="450" rx="14" fill="#0d1b3e" fill-opacity="0.5" stroke="#a78bfa" stroke-width="1" stroke-opacity="0.3"/>
     <g transform="translate(20, 22)">
-      <rect x="0" y="0" width="180" height="28" rx="6" fill="url(#grad-source)" filter="url(#glow)"/>
-      <text x="90" y="20" font-size="14" font-weight="700" fill="#0a0e27" text-anchor="middle">SOURCE  SIDE</text>
+      <rect x="0" y="0" width="220" height="28" rx="6" fill="url(#grad-deliv)" filter="url(#glow)"/>
+      <text x="110" y="20" font-size="14" font-weight="700" fill="#f8fafc" text-anchor="middle">THREADED  EXAMPLE</text>
     </g>
-    <text x="20" y="78" font-size="13" fill="#94a3b8">4 LLM calls per sample · Source-only · never sees any translation</text>
+    <text x="20" y="76" font-size="12" fill="#94a3b8">Same source sentence flows through every stage · En→Zh SI</text>
 
-    <g transform="translate(20, 104)">
-      <!-- Phase 1 -->
-      <g transform="translate(0, 0)">
-        <rect width="416" height="98" rx="10" fill="url(#grad-source)" filter="url(#card-shadow)"/>
-        <rect x="0" y="0" width="56" height="98" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
-        <text x="28" y="42" font-size="22" font-weight="800" fill="#f8fafc" text-anchor="middle">1</text>
-        <text x="28" y="68" font-size="9" font-weight="700" fill="#00d4ff" text-anchor="middle" letter-spacing="1">PHASE</text>
-        <text x="76" y="36" font-size="16" font-weight="700" fill="#f8fafc">Source Segment</text>
-        <text x="76" y="58" font-size="11" fill="#cbd5e1">input  source_text</text>
-        <text x="76" y="76" font-size="11" fill="#cbd5e1">output  source_segments[]</text>
-      </g>
-      <g transform="translate(424, 46)">
-        <path d="M 0 6 L 18 6" stroke="#00d4ff" stroke-width="2.5" fill="none" marker-end="url(#arrow-blue)"/>
-      </g>
-      <!-- Phase 2 -->
-      <g transform="translate(450, 0)">
-        <rect width="416" height="98" rx="10" fill="url(#grad-source)" filter="url(#card-shadow)"/>
-        <rect x="0" y="0" width="56" height="98" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
-        <text x="28" y="42" font-size="22" font-weight="800" fill="#f8fafc" text-anchor="middle">2</text>
-        <text x="28" y="68" font-size="9" font-weight="700" fill="#00d4ff" text-anchor="middle" letter-spacing="1">PHASE</text>
-        <text x="76" y="36" font-size="16" font-weight="700" fill="#f8fafc">Source Anchor</text>
-        <text x="76" y="58" font-size="11" fill="#cbd5e1">input  source_segments</text>
-        <text x="76" y="76" font-size="11" fill="#cbd5e1">output  source_anchors[]</text>
-      </g>
-      <g transform="translate(874, 46)">
-        <path d="M 0 6 L 18 6" stroke="#00d4ff" stroke-width="2.5" fill="none" marker-end="url(#arrow-blue)"/>
-      </g>
-      <!-- Phase 3 -->
-      <g transform="translate(900, 0)">
-        <rect width="416" height="98" rx="10" fill="url(#grad-source)" filter="url(#card-shadow)"/>
-        <rect x="0" y="0" width="56" height="98" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
-        <text x="28" y="42" font-size="22" font-weight="800" fill="#f8fafc" text-anchor="middle">3</text>
-        <text x="28" y="68" font-size="9" font-weight="700" fill="#00d4ff" text-anchor="middle" letter-spacing="1">PHASE</text>
-        <text x="76" y="36" font-size="16" font-weight="700" fill="#f8fafc">Source Event</text>
-        <text x="76" y="58" font-size="11" fill="#cbd5e1">input  source_segments</text>
-        <text x="76" y="76" font-size="11" fill="#cbd5e1">output  source_events[]</text>
-      </g>
-      <g transform="translate(1324, 46)">
-        <path d="M 0 6 L 18 6" stroke="#00d4ff" stroke-width="2.5" fill="none" marker-end="url(#arrow-blue)"/>
-      </g>
-      <!-- Phase 4 -->
-      <g transform="translate(1350, 0)">
-        <rect width="416" height="98" rx="10" fill="url(#grad-source)" filter="url(#card-shadow)"/>
-        <rect x="0" y="0" width="56" height="98" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
-        <text x="28" y="42" font-size="22" font-weight="800" fill="#f8fafc" text-anchor="middle">4</text>
-        <text x="28" y="68" font-size="9" font-weight="700" fill="#00d4ff" text-anchor="middle" letter-spacing="1">PHASE</text>
-        <text x="76" y="36" font-size="16" font-weight="700" fill="#f8fafc">Source Relation</text>
-        <text x="76" y="58" font-size="11" fill="#cbd5e1">input  source_events</text>
-        <text x="76" y="76" font-size="11" fill="#cbd5e1">output  source_relations[]</text>
-      </g>
+    <!-- Source text raw -->
+    <g transform="translate(20, 96)">
+      <rect width="560" height="78" rx="8" fill="#0a0e27" fill-opacity="0.5" stroke="#00d4ff" stroke-opacity="0.2"/>
+      <text x="14" y="22" font-size="9" font-weight="700" fill="#00d4ff" letter-spacing="1">SOURCE  TEXT  (raw)</text>
+      <text x="14" y="44" font-size="12" font-family="Menlo, Consolas, monospace" fill="#f8fafc">"Dr. Li's team at MIT published a study on</text>
+      <text x="14" y="62" font-size="12" font-family="Menlo, Consolas, monospace" fill="#f8fafc"> June 30, 2026 showing 18.4 MWh batteries..."</text>
+    </g>
+
+    <!-- After segmentation + anchor highlight -->
+    <g transform="translate(20, 180)">
+      <rect width="560" height="78" rx="8" fill="#0a0e27" fill-opacity="0.5" stroke="#00d4ff" stroke-opacity="0.4"/>
+      <text x="14" y="22" font-size="9" font-weight="700" fill="#00d4ff" letter-spacing="1">AFTER  PHASE 1–2  (segmented + anchors extracted)</text>
+      <text x="14" y="44" font-size="11" font-family="Menlo, Consolas, monospace" fill="#f8fafc">[S1] <tspan fill="#00d4ff" font-weight="700">"Dr. Li"</tspan>'s team at <tspan fill="#00d4ff" font-weight="700">"MIT"</tspan> published</text>
+      <text x="14" y="64" font-size="11" font-family="Menlo, Consolas, monospace" fill="#f8fafc">   a study on <tspan fill="#00d4ff" font-weight="700">"June 30, 2026"</tspan> showing <tspan fill="#00d4ff" font-weight="700">"18.4 MWh"</tspan>...</text>
+    </g>
+
+    <!-- After reference + joint card -->
+    <g transform="translate(20, 264)">
+      <rect width="560" height="78" rx="8" fill="#0a0e27" fill-opacity="0.5" stroke="#ff9a3c" stroke-opacity="0.4"/>
+      <text x="14" y="22" font-size="9" font-weight="700" fill="#ff9a3c" letter-spacing="1">AFTER  PHASE 5–8  (reference aligned → Joint Card frozen)</text>
+      <text x="14" y="44" font-size="11" font-family="Menlo, Consolas, monospace" fill="#f8fafc">[S1] ref-text aligned to source position 1</text>
+      <text x="14" y="64" font-size="11" font-family="Menlo, Consolas, monospace" fill="#f8fafc">   <tspan fill="#ff9a3c" font-weight="700">"18.4 MWh"</tspan> rendered by reference (auxiliary)</text>
+    </g>
+
+    <!-- SI matched -->
+    <g transform="translate(20, 356)">
+      <rect width="560" height="78" rx="8" fill="#0a0e27" fill-opacity="0.5" stroke="#4ade80" stroke-opacity="0.4"/>
+      <text x="14" y="22" font-size="9" font-weight="700" fill="#4ade80" letter-spacing="1">AFTER  PHASE 9–10  (SI matched against Joint Card)</text>
+      <text x="14" y="46" font-size="11" font-family="Menlo, Consolas, monospace" fill="#f8fafc">SI: "Dr. Li's MIT team published 18.4 MWh..."</text>
+      <text x="14" y="68" font-size="10" font-style="italic" fill="#94a3b8">Dr. Li ✓equiv · MIT ✓equiv · 18.4 MWh ✓equiv · Jun 30 ◐partial</text>
+    </g>
+
+    <!-- Vertical thread line connecting the 4 boxes (same example evolving) -->
+    <line x1="10" y1="122" x2="10" y2="438" stroke="#475569" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.7"/>
+    <g font-family="monospace" font-size="9" font-weight="700" fill="#cbd5e1">
+      <circle cx="10" cy="138" r="6" fill="#00d4ff" opacity="0.18"/>
+      <circle cx="10" cy="138" r="3" fill="#00d4ff"/>
+      <text x="22" y="142">S</text>
+      <circle cx="10" cy="222" r="6" fill="#00d4ff" opacity="0.18"/>
+      <circle cx="10" cy="222" r="3" fill="#00d4ff"/>
+      <text x="22" y="226">A</text>
+      <circle cx="10" cy="306" r="6" fill="#ff9a3c" opacity="0.18"/>
+      <circle cx="10" cy="306" r="3" fill="#ff9a3c"/>
+      <text x="22" y="310">J</text>
+      <circle cx="10" cy="398" r="6" fill="#4ade80" opacity="0.18"/>
+      <circle cx="10" cy="398" r="3" fill="#4ade80"/>
+      <text x="22" y="402">M</text>
     </g>
   </g>
 
-  <!-- ROW 2: REFERENCE -->
-  <g transform="translate(60, 408)">
-    <rect x="0" y="0" width="1800" height="220" rx="14" fill="#0d1b3e" fill-opacity="0.4" stroke="#ff9a3c" stroke-width="1" stroke-opacity="0.25"/>
-    <g transform="translate(20, 22)">
-      <rect x="0" y="0" width="180" height="28" rx="6" fill="url(#grad-ref)" filter="url(#glow)"/>
-      <text x="90" y="20" font-size="14" font-weight="700" fill="#0a0e27" text-anchor="middle">REFERENCE  SIDE</text>
-    </g>
-    <text x="20" y="78" font-size="13" fill="#94a3b8">4 LLM calls per sample · sees source_card + reference · <tspan font-weight="700" fill="#ff9a3c">auxiliary, NOT gold standard</tspan></text>
-
-    <g transform="translate(20, 104)">
-      <!-- Phase 5 -->
-      <g transform="translate(0, 0)">
-        <rect width="416" height="98" rx="10" fill="url(#grad-ref)" filter="url(#card-shadow)"/>
-        <rect x="0" y="0" width="56" height="98" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
-        <text x="28" y="42" font-size="22" font-weight="800" fill="#f8fafc" text-anchor="middle">5</text>
-        <text x="28" y="68" font-size="9" font-weight="700" fill="#ff9a3c" text-anchor="middle" letter-spacing="1">PHASE</text>
-        <text x="76" y="36" font-size="16" font-weight="700" fill="#f8fafc">Reference Align</text>
-        <text x="76" y="58" font-size="11" fill="#fff7ed">input  ref_text + source_segs</text>
-        <text x="76" y="76" font-size="11" fill="#fff7ed">output  reference_segments[]</text>
-      </g>
-      <g transform="translate(424, 46)">
-        <path d="M 0 6 L 18 6" stroke="#ff9a3c" stroke-width="2.5" fill="none" marker-end="url(#arrow-orange)"/>
-      </g>
-      <!-- Phase 6 -->
-      <g transform="translate(450, 0)">
-        <rect width="416" height="98" rx="10" fill="url(#grad-ref)" filter="url(#card-shadow)"/>
-        <rect x="0" y="0" width="56" height="98" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
-        <text x="28" y="42" font-size="22" font-weight="800" fill="#f8fafc" text-anchor="middle">6</text>
-        <text x="28" y="68" font-size="9" font-weight="700" fill="#ff9a3c" text-anchor="middle" letter-spacing="1">PHASE</text>
-        <text x="76" y="36" font-size="16" font-weight="700" fill="#f8fafc">Reference Anchor</text>
-        <text x="76" y="58" font-size="11" fill="#fff7ed">input  source_anchors + ref</text>
-        <text x="76" y="76" font-size="11" fill="#fff7ed">output  reference_anchors[]</text>
-      </g>
-      <g transform="translate(874, 46)">
-        <path d="M 0 6 L 18 6" stroke="#ff9a3c" stroke-width="2.5" fill="none" marker-end="url(#arrow-orange)"/>
-      </g>
-      <!-- Phase 7 -->
-      <g transform="translate(900, 0)">
-        <rect width="416" height="98" rx="10" fill="url(#grad-ref)" filter="url(#card-shadow)"/>
-        <rect x="0" y="0" width="56" height="98" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
-        <text x="28" y="42" font-size="22" font-weight="800" fill="#f8fafc" text-anchor="middle">7</text>
-        <text x="28" y="68" font-size="9" font-weight="700" fill="#ff9a3c" text-anchor="middle" letter-spacing="1">PHASE</text>
-        <text x="76" y="36" font-size="16" font-weight="700" fill="#f8fafc">Reference Event</text>
-        <text x="76" y="58" font-size="11" fill="#fff7ed">input  source_events + ref</text>
-        <text x="76" y="76" font-size="11" fill="#fff7ed">output  reference_events[]</text>
-      </g>
-      <g transform="translate(1324, 46)">
-        <path d="M 0 6 L 18 6" stroke="#ff9a3c" stroke-width="2.5" fill="none" marker-end="url(#arrow-orange)"/>
-      </g>
-      <!-- Phase 8 -->
-      <g transform="translate(1350, 0)">
-        <rect width="416" height="98" rx="10" fill="url(#grad-ref)" filter="url(#card-shadow)"/>
-        <rect x="0" y="0" width="56" height="98" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
-        <text x="28" y="42" font-size="22" font-weight="800" fill="#f8fafc" text-anchor="middle">8</text>
-        <text x="28" y="68" font-size="9" font-weight="700" fill="#ff9a3c" text-anchor="middle" letter-spacing="1">PHASE</text>
-        <text x="76" y="36" font-size="16" font-weight="700" fill="#f8fafc">Reference Relation</text>
-        <text x="76" y="58" font-size="11" fill="#fff7ed">input  source_relations + ref</text>
-        <text x="76" y="76" font-size="11" fill="#fff7ed">output  reference_relations[]</text>
-      </g>
-    </g>
-  </g>
-
-  <!-- Connector arrow down to Joint Card -->
-  <g transform="translate(950, 628)">
-    <path d="M 0 0 L 0 28" stroke="#00d4ff" stroke-width="2.5" fill="none" marker-end="url(#arrow-blue)" opacity="0.6"/>
-  </g>
-
-  <!-- JOINT CARD -->
-  <g transform="translate(60, 660)">
-    <rect x="0" y="0" width="1800" height="130" rx="16" fill="url(#grad-joint)" fill-opacity="0.15" stroke="url(#grad-joint)" stroke-width="2" filter="url(#card-shadow)"/>
-    <text x="40" y="44" font-size="22" font-weight="800" fill="#f8fafc" filter="url(#glow)">Joint Card  (frozen, SHA-256 hash)</text>
-    <text x="40" y="72" font-size="13" fill="#cbd5e1">Python positional zip of source + reference arrays · shared by every SI system · <tspan font-weight="700" fill="#00d4ff">once per sample, 8 LLM calls total</tspan></text>
-    <text x="40" y="106" font-size="12" font-family="Menlo, Consolas, monospace" fill="#64748b">artifact_hash(artifact) = sha256( json.dumps({k:v for k,v in artifact.items() if k!="metadata"}, sort_keys=True) )</text>
-    <g transform="translate(1700, 32)">
+  <!-- ============== SECTION 2: JOINT CARD ============== -->
+  <g transform="translate(60, 630)">
+    <rect x="0" y="0" width="1800" height="120" rx="14" fill="url(#grad-joint)" fill-opacity="0.15" stroke="url(#grad-joint)" stroke-width="2" filter="url(#card-shadow)"/>
+    <text x="20" y="32" font-size="12" font-weight="700" fill="#94a3b8" letter-spacing="2">SECTION 2 — JOINT CARD  ·  FROZEN</text>
+    <text x="40" y="64" font-size="20" font-weight="800" fill="#f8fafc" filter="url(#glow)">Joint Card  (frozen, SHA-256 hash)</text>
+    <text x="40" y="88" font-size="12" fill="#cbd5e1">Python positional zip of source + reference arrays · <tspan font-weight="700" fill="#00d4ff">once per sample, shared by every SI system</tspan></text>
+    <text x="40" y="108" font-size="11" font-family="Menlo, Consolas, monospace" fill="#64748b">artifact_hash = sha256( json.dumps({k:v for k,v in items if k!="metadata"}, sort_keys=True) )</text>
+    <g transform="translate(1700, 28)">
       <rect x="0" y="20" width="60" height="50" rx="6" fill="#0a0e27" stroke="#00d4ff" stroke-width="2"/>
       <path d="M 12 20 L 12 12 a 18 18 0 0 1 36 0 L 48 20" stroke="#00d4ff" stroke-width="2.5" fill="none"/>
       <circle cx="30" cy="42" r="5" fill="#00d4ff"/>
@@ -229,184 +300,258 @@
     </g>
   </g>
 
-  <!-- Connector arrow down to SI row -->
-  <g transform="translate(950, 790)">
+  <!-- Connectors: Sections → Joint Card → Section 3 -->
+  <g transform="translate(950, 610)">
+    <path d="M 0 0 L 0 20" stroke="#a78bfa" stroke-width="2" fill="none" opacity="0.4"/>
+  </g>
+  <g transform="translate(950, 750)">
     <path d="M 0 0 L 0 28" stroke="#4ade80" stroke-width="2.5" fill="none" marker-end="url(#arrow-green)" opacity="0.6"/>
   </g>
 
-  <!-- ROW 3: SI MATCHING -->
-  <g transform="translate(60, 822)">
-    <rect x="0" y="0" width="1800" height="180" rx="14" fill="#0d1b3e" fill-opacity="0.4" stroke="#4ade80" stroke-width="1" stroke-opacity="0.25"/>
-    <g transform="translate(20, 22)">
-      <rect x="0" y="0" width="180" height="28" rx="6" fill="url(#grad-si)" filter="url(#glow)"/>
-      <text x="90" y="20" font-size="14" font-weight="700" fill="#0a0e27" text-anchor="middle">SI  MATCHING</text>
-    </g>
-    <text x="20" y="78" font-size="13" fill="#94a3b8">6 LLM calls per system · sees Joint Card + si_translation · positional 1-to-1 with source items</text>
+  <!-- ============== SECTION 3: SI MATCHING + REPAIR LOOP ============== -->
+  <g transform="translate(60, 782)">
+    <rect x="0" y="0" width="1800" height="350" rx="14" fill="#0d1b3e" fill-opacity="0.3" stroke="#4ade80" stroke-width="1" stroke-opacity="0.25"/>
+    <text x="20" y="32" font-size="14" font-weight="700" fill="#94a3b8" letter-spacing="2">SECTION 3 — SI MATCHING  ·  6 LLM calls / system  +  RUNNER REPAIR LOOP</text>
 
-    <g transform="translate(20, 96)">
-      <!-- Phase 9 -->
-      <g transform="translate(0, 0)">
-        <rect width="266" height="72" rx="10" fill="url(#grad-si)" filter="url(#card-shadow)"/>
-        <rect x="0" y="0" width="46" height="72" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
-        <text x="23" y="32" font-size="17" font-weight="800" fill="#f8fafc" text-anchor="middle">9</text>
-        <text x="23" y="56" font-size="8" font-weight="700" fill="#4ade80" text-anchor="middle" letter-spacing="1">PHASE</text>
-        <text x="60" y="28" font-size="14" font-weight="700" fill="#f8fafc">SI Align</text>
-        <text x="60" y="48" font-size="10" fill="#f0fdf4">si_segments[]</text>
-        <text x="60" y="62" font-size="10" fill="#f0fdf4">(lossless split)</text>
+    <!-- 6 agent cards (smaller) -->
+    <g transform="translate(20, 56)">
+      <g transform="translate(0, 0)" color="#4ade80">
+        <rect width="240" height="86" rx="9" fill="url(#grad-si)" filter="url(#card-shadow)"/>
+        <use href="#agent-icon" x="10" y="8" width="20" height="20"/>
+        <rect x="0" y="0" width="40" height="86" rx="9" fill="#0a0e27" fill-opacity="0.5"/>
+        <text x="20" y="40" font-size="18" font-weight="800" fill="#f8fafc" text-anchor="middle">9</text>
+        <text x="20" y="60" font-size="8" font-weight="700" fill="#4ade80" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="52" y="30" font-size="13" font-weight="700" fill="#f8fafc">SI Align</text>
+        <text x="52" y="50" font-size="10" fill="#f0fdf4">si_segments[]</text>
+        <text x="52" y="66" font-size="9" font-style="italic" fill="#bbf7d0">"lossless split"</text>
       </g>
-      <g transform="translate(272, 30)">
-        <path d="M 0 6 L 14 6" stroke="#4ade80" stroke-width="2" fill="none" marker-end="url(#arrow-green)"/>
+      <g transform="translate(244, 38)"><path d="M 0 6 L 12 6" stroke="#4ade80" stroke-width="2" fill="none" marker-end="url(#arrow-green)"/></g>
+      <!-- Phase 10 with reasoning -->
+      <g transform="translate(264, 0)" color="#4ade80">
+        <rect width="240" height="86" rx="9" fill="url(#grad-si)" filter="url(#card-shadow)"/>
+        <use href="#agent-icon" x="10" y="8" width="20" height="20"/>
+        <rect x="0" y="0" width="40" height="86" rx="9" fill="#0a0e27" fill-opacity="0.5"/>
+        <text x="20" y="40" font-size="18" font-weight="800" fill="#f8fafc" text-anchor="middle">10</text>
+        <text x="20" y="60" font-size="8" font-weight="700" fill="#4ade80" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="52" y="30" font-size="13" font-weight="700" fill="#f8fafc">SI Anchor Match</text>
+        <text x="52" y="50" font-size="10" fill="#f0fdf4">match ∈ {equiv, partial,</text>
+        <text x="52" y="64" font-size="10" fill="#f0fdf4">contradiction, missing}</text>
+        <!-- Reasoning bubble (positioned BELOW the card to avoid text collision) -->
+        <g transform="translate(52, 96)">
+          <rect width="180" height="16" rx="3" fill="#0a0e27" stroke="#4ade80" stroke-opacity="0.5" fill-opacity="0.9"/>
+          <text x="6" y="11" font-size="8" font-style="italic" fill="#bbf7d0">"Dr. Li → Li, equiv (EN-side)"</text>
+        </g>
       </g>
-      <!-- Phase 10 -->
-      <g transform="translate(294, 0)">
-        <rect width="266" height="72" rx="10" fill="url(#grad-si)" filter="url(#card-shadow)"/>
-        <rect x="0" y="0" width="46" height="72" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
-        <text x="23" y="32" font-size="17" font-weight="800" fill="#f8fafc" text-anchor="middle">10</text>
-        <text x="23" y="56" font-size="8" font-weight="700" fill="#4ade80" text-anchor="middle" letter-spacing="1">PHASE</text>
-        <text x="60" y="28" font-size="14" font-weight="700" fill="#f8fafc">SI Anchor Match</text>
-        <text x="60" y="48" font-size="10" fill="#f0fdf4">match = equiv/partial/</text>
-        <text x="60" y="62" font-size="10" fill="#f0fdf4">contradiction/missing</text>
+      <g transform="translate(508, 38)"><path d="M 0 6 L 12 6" stroke="#4ade80" stroke-width="2" fill="none" marker-end="url(#arrow-green)"/></g>
+      <!-- Decision diamond (taller, distinct hexagon shape, clearly outside card row) -->
+      <g transform="translate(528, 6)">
+        <!-- Hexagon polygon for clarity -->
+        <polygon points="60,0 120,15 120,55 60,70 0,55 0,15" fill="#0a0e27" stroke="url(#grad-warn)" stroke-width="2.5" filter="url(#card-shadow)"/>
+        <text x="60" y="30" font-size="12" font-weight="800" fill="#fbbf24" text-anchor="middle">match</text>
+        <text x="60" y="46" font-size="12" font-weight="800" fill="#fbbf24" text-anchor="middle">clear?</text>
+        <text x="60" y="60" font-size="8" font-weight="700" fill="#94a3b8" text-anchor="middle" letter-spacing="0.5">DECISION</text>
+        <!-- Yes branch label (right) -->
+        <g transform="translate(122, 30)">
+          <text x="0" y="0" font-size="11" font-weight="700" fill="#4ade80">Yes →</text>
+        </g>
+        <!-- No branch label (bottom-right, leads down to repair loop below) -->
+        <g transform="translate(124, 56)">
+          <rect x="0" y="-8" width="44" height="14" rx="3" fill="#0a0e27" stroke="#fbbf24" stroke-opacity="0.7"/>
+          <text x="22" y="3" font-size="10" font-weight="700" fill="#fbbf24" text-anchor="middle">No ↓</text>
+        </g>
       </g>
-      <g transform="translate(566, 30)">
-        <path d="M 0 6 L 14 6" stroke="#4ade80" stroke-width="2" fill="none" marker-end="url(#arrow-green)"/>
-      </g>
+      <g transform="translate(660, 38)"><path d="M 0 6 L 12 6" stroke="#4ade80" stroke-width="2" fill="none" marker-end="url(#arrow-green)"/></g>
       <!-- Phase 11 -->
-      <g transform="translate(588, 0)">
-        <rect width="266" height="72" rx="10" fill="url(#grad-si)" filter="url(#card-shadow)"/>
-        <rect x="0" y="0" width="46" height="72" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
-        <text x="23" y="32" font-size="17" font-weight="800" fill="#f8fafc" text-anchor="middle">11</text>
-        <text x="23" y="56" font-size="8" font-weight="700" fill="#4ade80" text-anchor="middle" letter-spacing="1">PHASE</text>
-        <text x="60" y="28" font-size="14" font-weight="700" fill="#f8fafc">SI Event Match</text>
-        <text x="60" y="48" font-size="10" fill="#f0fdf4">proposition kept /</text>
-        <text x="60" y="62" font-size="10" fill="#f0fdf4">weakened / flipped</text>
+      <g transform="translate(680, 0)" color="#4ade80">
+        <rect width="220" height="86" rx="9" fill="url(#grad-si)" filter="url(#card-shadow)"/>
+        <use href="#agent-icon" x="10" y="8" width="20" height="20"/>
+        <rect x="0" y="0" width="40" height="86" rx="9" fill="#0a0e27" fill-opacity="0.5"/>
+        <text x="20" y="40" font-size="18" font-weight="800" fill="#f8fafc" text-anchor="middle">11</text>
+        <text x="20" y="60" font-size="8" font-weight="700" fill="#4ade80" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="52" y="30" font-size="13" font-weight="700" fill="#f8fafc">SI Event Match</text>
+        <text x="52" y="50" font-size="10" fill="#f0fdf4">proposition kept /</text>
+        <text x="52" y="64" font-size="10" fill="#f0fdf4">weakened / flipped</text>
       </g>
-      <g transform="translate(860, 30)">
-        <path d="M 0 6 L 14 6" stroke="#4ade80" stroke-width="2" fill="none" marker-end="url(#arrow-green)"/>
-      </g>
+      <g transform="translate(904, 38)"><path d="M 0 6 L 12 6" stroke="#4ade80" stroke-width="2" fill="none" marker-end="url(#arrow-green)"/></g>
       <!-- Phase 12 -->
-      <g transform="translate(882, 0)">
-        <rect width="266" height="72" rx="10" fill="url(#grad-si)" filter="url(#card-shadow)"/>
-        <rect x="0" y="0" width="46" height="72" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
-        <text x="23" y="32" font-size="17" font-weight="800" fill="#f8fafc" text-anchor="middle">12</text>
-        <text x="23" y="56" font-size="8" font-weight="700" fill="#4ade80" text-anchor="middle" letter-spacing="1">PHASE</text>
-        <text x="60" y="28" font-size="14" font-weight="700" fill="#f8fafc">SI Relation Match</text>
-        <text x="60" y="48" font-size="10" fill="#f0fdf4">incl. not_scored</text>
-        <text x="60" y="62" font-size="10" fill="#f0fdf4">when endpoints missing</text>
+      <g transform="translate(924, 0)" color="#4ade80">
+        <rect width="220" height="86" rx="9" fill="url(#grad-si)" filter="url(#card-shadow)"/>
+        <use href="#agent-icon" x="10" y="8" width="20" height="20"/>
+        <rect x="0" y="0" width="40" height="86" rx="9" fill="#0a0e27" fill-opacity="0.5"/>
+        <text x="20" y="40" font-size="18" font-weight="800" fill="#f8fafc" text-anchor="middle">12</text>
+        <text x="20" y="60" font-size="8" font-weight="700" fill="#4ade80" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="52" y="30" font-size="13" font-weight="700" fill="#f8fafc">SI Relation Match</text>
+        <text x="52" y="50" font-size="10" fill="#f0fdf4">incl. not_scored</text>
+        <text x="52" y="64" font-size="10" fill="#f0fdf4">when endpoints missing</text>
       </g>
-      <g transform="translate(1154, 30)">
-        <path d="M 0 6 L 14 6" stroke="#a78bfa" stroke-width="2" fill="none" marker-end="url(#arrow-purple)"/>
-      </g>
+      <g transform="translate(1148, 38)"><path d="M 0 6 L 12 6" stroke="#a78bfa" stroke-width="2" fill="none" marker-end="url(#arrow-purple)"/></g>
       <!-- Phase 13 -->
-      <g transform="translate(1176, 0)">
-        <rect width="266" height="72" rx="10" fill="url(#grad-deliv)" filter="url(#card-shadow)"/>
-        <rect x="0" y="0" width="46" height="72" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
-        <text x="23" y="32" font-size="17" font-weight="800" fill="#f8fafc" text-anchor="middle">13</text>
-        <text x="23" y="56" font-size="8" font-weight="700" fill="#a78bfa" text-anchor="middle" letter-spacing="1">PHASE</text>
-        <text x="60" y="28" font-size="14" font-weight="700" fill="#f8fafc">Fluency</text>
-        <text x="60" y="48" font-size="10" fill="#f5f3ff">si_text only · </text>
-        <text x="60" y="62" font-size="10" fill="#f5f3ff">no source visible</text>
+      <g transform="translate(1168, 0)" color="#a78bfa">
+        <rect width="220" height="86" rx="9" fill="url(#grad-deliv)" filter="url(#card-shadow)"/>
+        <use href="#agent-icon" x="10" y="8" width="20" height="20"/>
+        <rect x="0" y="0" width="40" height="86" rx="9" fill="#0a0e27" fill-opacity="0.5"/>
+        <text x="20" y="40" font-size="18" font-weight="800" fill="#f8fafc" text-anchor="middle">13</text>
+        <text x="20" y="60" font-size="8" font-weight="700" fill="#a78bfa" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="52" y="30" font-size="13" font-weight="700" fill="#f8fafc">Fluency</text>
+        <text x="52" y="50" font-size="10" fill="#f5f3ff">si_text only</text>
+        <text x="52" y="64" font-size="10" fill="#f5f3ff">no source visible</text>
       </g>
-      <g transform="translate(1448, 30)">
-        <path d="M 0 6 L 14 6" stroke="#a78bfa" stroke-width="2" fill="none" marker-end="url(#arrow-purple)"/>
-      </g>
+      <g transform="translate(1392, 38)"><path d="M 0 6 L 12 6" stroke="#a78bfa" stroke-width="2" fill="none" marker-end="url(#arrow-purple)"/></g>
       <!-- Phase 14 -->
-      <g transform="translate(1470, 0)">
-        <rect width="266" height="72" rx="10" fill="url(#grad-deliv)" filter="url(#card-shadow)"/>
-        <rect x="0" y="0" width="46" height="72" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
-        <text x="23" y="32" font-size="17" font-weight="800" fill="#f8fafc" text-anchor="middle">14</text>
-        <text x="23" y="56" font-size="8" font-weight="700" fill="#a78bfa" text-anchor="middle" letter-spacing="1">PHASE</text>
-        <text x="60" y="28" font-size="14" font-weight="700" fill="#f8fafc">SI Expression</text>
-        <text x="60" y="48" font-size="10" fill="#f5f3ff">source + si · </text>
-        <text x="60" y="62" font-size="10" fill="#f5f3ff">redundancy, lag</text>
+      <g transform="translate(1412, 0)" color="#a78bfa">
+        <rect width="220" height="86" rx="9" fill="url(#grad-deliv)" filter="url(#card-shadow)"/>
+        <use href="#agent-icon" x="10" y="8" width="20" height="20"/>
+        <rect x="0" y="0" width="40" height="86" rx="9" fill="#0a0e27" fill-opacity="0.5"/>
+        <text x="20" y="40" font-size="18" font-weight="800" fill="#f8fafc" text-anchor="middle">14</text>
+        <text x="20" y="60" font-size="8" font-weight="700" fill="#a78bfa" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="52" y="30" font-size="13" font-weight="700" fill="#f8fafc">SI Expression</text>
+        <text x="52" y="50" font-size="10" fill="#f5f3ff">source + si</text>
+        <text x="52" y="64" font-size="10" fill="#f5f3ff">redundancy, lag</text>
+      </g>
+    </g>
+
+    <!-- No branch from decision diamond → leads DOWN into Runner repair loop below -->
+    <g transform="translate(528, 80)">
+      <!-- Vertical dashed line from hexagon bottom all the way down to repair loop header -->
+      <path d="M 60 0 L 60 160" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4 3" fill="none" opacity="0.7"/>
+      <!-- Annotation midway -->
+      <g transform="translate(74, 76)">
+        <rect width="148" height="22" rx="4" fill="#0a0e27" stroke="#fbbf24" stroke-opacity="0.7"/>
+        <text x="74" y="15" font-size="10" font-weight="700" fill="#fbbf24" text-anchor="middle">↺ triggers repair loop</text>
+      </g>
+    </g>
+
+    <!-- RUNNER REPAIR LOOP -->
+    <g transform="translate(20, 170)">
+      <rect width="1760" height="160" rx="10" fill="#0a0e27" fill-opacity="0.4" stroke="url(#grad-warn)" stroke-width="1" stroke-opacity="0.4"/>
+      <g transform="translate(20, 18)">
+        <rect width="180" height="26" rx="5" fill="url(#grad-warn)" filter="url(#glow)"/>
+        <text x="90" y="18" font-size="12" font-weight="700" fill="#0a0e27" text-anchor="middle">RUNNER  ·  REPAIR  LOOP</text>
+        <text x="194" y="18" font-size="11" fill="#94a3b8">each LLM phase runs: <tspan font-weight="700" fill="#fbbf24">call → validate → if fail → schema_repair (×2) → fallback</tspan></text>
+      </g>
+      <!-- Loop visualization -->
+      <g transform="translate(40, 64)">
+        <!-- 4 nodes in a loop -->
+        <g transform="translate(0, 0)">
+          <rect width="200" height="56" rx="8" fill="url(#grad-source)" filter="url(#card-shadow)"/>
+          <text x="100" y="22" font-size="11" font-weight="700" fill="#0a0e27" text-anchor="middle">① LLM call</text>
+          <text x="100" y="42" font-size="9" fill="#0a0e27" text-anchor="middle">generate_json(prompt, payload)</text>
+        </g>
+        <g transform="translate(380, 0)">
+          <path d="M 0 28 L 174 28" stroke="#fbbf24" stroke-width="2" fill="none" marker-end="url(#arrow-warn)"/>
+          <text x="87" y="20" font-size="9" font-weight="700" fill="#fbbf24" text-anchor="middle">issues?</text>
+        </g>
+        <g transform="translate(560, 0)">
+          <rect width="220" height="56" rx="8" fill="url(#grad-warn)" filter="url(#card-shadow)"/>
+          <text x="110" y="22" font-size="11" font-weight="700" fill="#0a0e27" text-anchor="middle">② validator</text>
+          <text x="110" y="42" font-size="9" fill="#0a0e27" text-anchor="middle">structural checks (ID, evidence, ...)</text>
+        </g>
+        <g transform="translate(960, 0)">
+          <path d="M 0 28 L 174 28" stroke="#fbbf24" stroke-width="2" fill="none" marker-end="url(#arrow-warn)"/>
+          <text x="87" y="20" font-size="9" font-weight="700" fill="#fbbf24" text-anchor="middle">if fail ×2</text>
+        </g>
+        <g transform="translate(1140, 0)">
+          <rect width="220" height="56" rx="8" fill="url(#grad-deliv)" filter="url(#card-shadow)"/>
+          <text x="110" y="22" font-size="11" font-weight="700" fill="#f8fafc" text-anchor="middle">③ schema_repair</text>
+          <text x="110" y="42" font-size="9" fill="#f8fafc" text-anchor="middle">LLM fixes structure only</text>
+        </g>
+        <g transform="translate(1540, 0)">
+          <path d="M 0 28 L 174 28" stroke="#fbbf24" stroke-width="2" fill="none" marker-end="url(#arrow-warn)"/>
+        </g>
+        <!-- Fallback -->
+        <g transform="translate(1700, 0)">
+          <rect width="60" height="56" rx="8" fill="url(#grad-score)" filter="url(#card-shadow)"/>
+          <text x="30" y="22" font-size="11" font-weight="800" fill="#f8fafc" text-anchor="middle">④</text>
+          <text x="30" y="40" font-size="8" fill="#fce7f3" text-anchor="middle">fallback</text>
+          <text x="30" y="50" font-size="8" fill="#fce7f3" text-anchor="middle">or fail</text>
+        </g>
+        <!-- Loop back arrow (kept inside panel: y=70 to y=90 vertical, then horizontal at y=90, back up to y=60 at nodes row) -->
+        <g transform="translate(40, 0)">
+          <path d="M 0 60 L 0 90 L 1700 90 L 1700 50" stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="4 3" fill="none" marker-end="url(#arrow-warn)" opacity="0.7"/>
+          <g transform="translate(860, 84)">
+            <rect x="-280" y="-10" width="560" height="20" rx="4" fill="#0a0e27" stroke="#fbbf24" stroke-opacity="0.4"/>
+            <text x="0" y="4" font-size="10" font-style="italic" fill="#fbbf24" text-anchor="middle">↑ max 2 schema_repair attempts, then deterministic fallback → failures.jsonl</text>
+          </g>
+        </g>
       </g>
     </g>
   </g>
 
-  <!-- DETERMINISTIC SCORING (LEFT) -->
-  <g transform="translate(60, 1030)">
-    <rect x="0" y="0" width="1140" height="270" rx="14" fill="#0d1b3e" fill-opacity="0.5" stroke="#ec4899" stroke-width="1" stroke-opacity="0.3"/>
-    <g transform="translate(20, 22)">
-      <rect x="0" y="0" width="240" height="28" rx="6" fill="url(#grad-score)" filter="url(#glow)"/>
-      <text x="120" y="20" font-size="14" font-weight="700" fill="#f8fafc" text-anchor="middle">DETERMINISTIC  SCORING</text>
+  <!-- ============== SECTION 4: SCORING + ITEM TRACE ============== -->
+  <g transform="translate(60, 1160)">
+    <rect x="0" y="0" width="1140" height="280" rx="14" fill="#0d1b3e" fill-opacity="0.5" stroke="#ec4899" stroke-width="1" stroke-opacity="0.3"/>
+    <text x="20" y="32" font-size="14" font-weight="700" fill="#94a3b8" letter-spacing="2">SECTION 4 — DETERMINISTIC SCORING  ·  zero LLM</text>
+    <g transform="translate(20, 50)">
+      <rect width="220" height="28" rx="6" fill="url(#grad-score)" filter="url(#glow)"/>
+      <text x="110" y="20" font-size="14" font-weight="700" fill="#f8fafc" text-anchor="middle">5  DIMENSIONS</text>
     </g>
-    <text x="20" y="76" font-size="13" fill="#94a3b8">calculate_v07_scores() · Python · zero LLM · importance-weighted · relation endpoint blocking</text>
+    <text x="20" y="100" font-size="12" fill="#94a3b8">calculate_v07_scores() · importance-weighted · relation endpoint blocking</text>
 
-    <g transform="translate(20, 96)">
-      <rect width="1100" height="40" rx="8" fill="#0a0e27" fill-opacity="0.5" stroke="#ec4899" stroke-opacity="0.3"/>
-      <text x="20" y="26" font-size="13" font-family="Menlo, Consolas, monospace" fill="#f8fafc">dimension = 100 × Σ(importance_i × score_i) / Σ(importance_i)</text>
-      <text x="900" y="26" font-size="12" font-family="Menlo, Consolas, monospace" fill="#cbd5e1">score_i ∈ {1.0, 0.5, 0.0}</text>
+    <g transform="translate(20, 116)">
+      <rect width="1100" height="36" rx="6" fill="#0a0e27" fill-opacity="0.5" stroke="#ec4899" stroke-opacity="0.3"/>
+      <text x="16" y="22" font-size="12" font-family="Menlo, Consolas, monospace" fill="#f8fafc">dimension = 100 × Σ(importance_i × score_i) / Σ(importance_i)   ·   score_i ∈ {1.0, 0.5, 0.0}</text>
     </g>
 
-    <!-- 5 weight bars in 2 rows -->
-    <!-- Row 1: Anchor / Event / Relation -->
-    <g transform="translate(20, 152)">
+    <g transform="translate(20, 168)">
       <g transform="translate(0, 0)">
         <text x="0" y="14" font-size="12" font-weight="700" fill="#f8fafc">Anchor</text>
         <text x="0" y="34" font-size="22" font-weight="800" fill="#00d4ff" filter="url(#glow)">85.71</text>
-        <text x="0" y="50" font-size="10" font-weight="600" fill="#94a3b8">35% weight</text>
-        <rect x="100" y="6" width="220" height="22" rx="11" fill="#0a0e27" stroke="#00d4ff" stroke-opacity="0.3"/>
-        <rect x="100" y="6" width="189" height="22" rx="11" fill="url(#grad-source)"/>
-        <text x="100" y="50" font-size="10" font-family="Menlo, Consolas, monospace" fill="#64748b">12/14 · imp 24/29</text>
+        <text x="0" y="50" font-size="10" font-weight="600" fill="#94a3b8">35%</text>
+        <rect x="100" y="6" width="200" height="22" rx="11" fill="#0a0e27" stroke="#00d4ff" stroke-opacity="0.3"/>
+        <rect x="100" y="6" width="171" height="22" rx="11" fill="url(#grad-source)"/>
       </g>
-      <g transform="translate(380, 0)">
+      <g transform="translate(370, 0)">
         <text x="0" y="14" font-size="12" font-weight="700" fill="#f8fafc">Event</text>
         <text x="0" y="34" font-size="22" font-weight="800" fill="#ff9a3c" filter="url(#glow)">92.00</text>
-        <text x="0" y="50" font-size="10" font-weight="600" fill="#94a3b8">35% weight</text>
-        <rect x="100" y="6" width="220" height="22" rx="11" fill="#0a0e27" stroke="#ff9a3c" stroke-opacity="0.3"/>
-        <rect x="100" y="6" width="202" height="22" rx="11" fill="url(#grad-ref)"/>
-        <text x="100" y="50" font-size="10" font-family="Menlo, Consolas, monospace" fill="#64748b">11/13 · imp 23/25</text>
+        <text x="0" y="50" font-size="10" font-weight="600" fill="#94a3b8">35%</text>
+        <rect x="100" y="6" width="200" height="22" rx="11" fill="#0a0e27" stroke="#ff9a3c" stroke-opacity="0.3"/>
+        <rect x="100" y="6" width="184" height="22" rx="11" fill="url(#grad-ref)"/>
       </g>
-      <g transform="translate(760, 0)">
+      <g transform="translate(740, 0)">
         <text x="0" y="14" font-size="12" font-weight="700" fill="#f8fafc">Relation</text>
         <text x="0" y="34" font-size="22" font-weight="800" fill="#4ade80" filter="url(#glow)">100.00</text>
-        <text x="0" y="50" font-size="10" font-weight="600" fill="#94a3b8">10% weight</text>
-        <rect x="100" y="6" width="220" height="22" rx="11" fill="#0a0e27" stroke="#4ade80" stroke-opacity="0.3"/>
-        <rect x="100" y="6" width="220" height="22" rx="11" fill="url(#grad-si)"/>
-        <text x="100" y="50" font-size="10" font-family="Menlo, Consolas, monospace" fill="#64748b">2/2 · imp 4/4</text>
+        <text x="0" y="50" font-size="10" font-weight="600" fill="#94a3b8">10%</text>
+        <rect x="100" y="6" width="200" height="22" rx="11" fill="#0a0e27" stroke="#4ade80" stroke-opacity="0.3"/>
+        <rect x="100" y="6" width="200" height="22" rx="11" fill="url(#grad-si)"/>
       </g>
-    </g>
-
-    <!-- Row 2: Fluency / Expression -->
-    <g transform="translate(20, 218)">
-      <g transform="translate(0, 0)">
+      <g transform="translate(0, 72)">
         <text x="0" y="14" font-size="12" font-weight="700" fill="#f8fafc">Fluency</text>
         <text x="0" y="34" font-size="22" font-weight="800" fill="#a78bfa" filter="url(#glow)">98.00</text>
-        <text x="0" y="50" font-size="10" font-weight="600" fill="#94a3b8">12% weight</text>
-        <rect x="100" y="6" width="220" height="22" rx="11" fill="#0a0e27" stroke="#a78bfa" stroke-opacity="0.3"/>
-        <rect x="100" y="6" width="216" height="22" rx="11" fill="url(#grad-deliv)"/>
-        <text x="100" y="50" font-size="10" font-family="Menlo, Consolas, monospace" fill="#64748b">1 minor · -2</text>
+        <text x="0" y="50" font-size="10" font-weight="600" fill="#94a3b8">12%</text>
+        <rect x="100" y="6" width="200" height="22" rx="11" fill="#0a0e27" stroke="#a78bfa" stroke-opacity="0.3"/>
+        <rect x="100" y="6" width="196" height="22" rx="11" fill="url(#grad-deliv)"/>
       </g>
-      <g transform="translate(380, 0)">
+      <g transform="translate(370, 72)">
         <text x="0" y="14" font-size="12" font-weight="700" fill="#f8fafc">Expression</text>
         <text x="0" y="34" font-size="22" font-weight="800" fill="#ec4899" filter="url(#glow)">100.00</text>
-        <text x="0" y="50" font-size="10" font-weight="600" fill="#94a3b8">8% weight</text>
-        <rect x="100" y="6" width="220" height="22" rx="11" fill="#0a0e27" stroke="#ec4899" stroke-opacity="0.3"/>
-        <rect x="100" y="6" width="220" height="22" rx="11" fill="url(#grad-score)"/>
-        <text x="100" y="50" font-size="10" font-family="Menlo, Consolas, monospace" fill="#64748b">0 issues</text>
+        <text x="0" y="50" font-size="10" font-weight="600" fill="#94a3b8">8%</text>
+        <rect x="100" y="6" width="200" height="22" rx="11" fill="#0a0e27" stroke="#ec4899" stroke-opacity="0.3"/>
+        <rect x="100" y="6" width="200" height="22" rx="11" fill="url(#grad-score)"/>
       </g>
-      <g transform="translate(760, 0)">
-        <text x="0" y="14" font-size="11" font-weight="700" fill="#cbd5e1">Weighted sum</text>
-        <text x="0" y="34" font-size="14" font-family="Menlo, Consolas, monospace" fill="#cbd5e1">.8571·35 + .92·35</text>
-        <text x="0" y="50" font-size="11" font-family="Menlo, Consolas, monospace" fill="#64748b">+ 1.0·10 + .98·12 + 1.0·8</text>
-        <text x="0" y="62" font-size="11" font-family="Menlo, Consolas, monospace" fill="#64748b">= 92.16 / 100</text>
+      <!-- Final score -->
+      <g transform="translate(740, 72)">
+        <rect width="340" height="56" rx="10" fill="url(#grad-score)" filter="url(#glow)"/>
+        <text x="20" y="22" font-size="11" font-weight="700" fill="#f8fafc" letter-spacing="1">FINAL  SCORE  (weighted sum)</text>
+        <text x="20" y="44" font-size="11" font-family="Menlo, Consolas, monospace" fill="#fce7f3">.8571·35 + .92·35 + 1.0·10 + .98·12 + 1.0·8</text>
+        <text x="320" y="44" font-size="22" font-weight="800" fill="#f8fafc" text-anchor="end" filter="url(#soft-glow)">92.16</text>
       </g>
     </g>
   </g>
 
-  <!-- SAMPLE ITEM TRACE (RIGHT) -->
-  <g transform="translate(1220, 1030)">
-    <rect x="0" y="0" width="640" height="270" rx="14" fill="#0d1b3e" fill-opacity="0.5" stroke="#ec4899" stroke-width="1" stroke-opacity="0.3"/>
+  <!-- ITEM TRACE: a single Anchor showing reasoning + contribution -->
+  <g transform="translate(1220, 1160)">
+    <rect x="0" y="0" width="640" height="280" rx="14" fill="#0d1b3e" fill-opacity="0.5" stroke="#ec4899" stroke-width="1" stroke-opacity="0.3"/>
     <g transform="translate(20, 22)">
       <rect x="0" y="0" width="220" height="28" rx="6" fill="url(#grad-score)" filter="url(#glow)"/>
       <text x="110" y="20" font-size="14" font-weight="700" fill="#f8fafc" text-anchor="middle">SAMPLE  ITEM  TRACE</text>
     </g>
-    <text x="20" y="76" font-size="13" fill="#94a3b8">How a single Anchor contributes to the final score</text>
+    <text x="20" y="76" font-size="12" fill="#94a3b8">One Anchor — from LLM match to score contribution</text>
 
-    <g transform="translate(20, 96)">
-      <rect width="600" height="158" rx="10" fill="#0a0e27" fill-opacity="0.6" stroke="#00d4ff" stroke-opacity="0.3"/>
+    <g transform="translate(20, 92)">
+      <rect width="600" height="170" rx="10" fill="#0a0e27" fill-opacity="0.6" stroke="#00d4ff" stroke-opacity="0.3"/>
       <g transform="translate(16, 16)">
         <rect width="62" height="22" rx="4" fill="url(#grad-source)"/>
-        <text x="31" y="16" font-size="11" font-weight="800" fill="#0a0e27" text-anchor="middle">S3_A2</text>
+        <text x="31" y="16" font-size="11" font-weight="800" fill="#0a0e27" text-anchor="middle">S1_A1</text>
         <rect x="70" y="0" width="54" height="22" rx="4" fill="#0a0e27" stroke="#ff9a3c" stroke-opacity="0.6"/>
         <text x="97" y="16" font-size="11" font-weight="700" fill="#ff9a3c" text-anchor="middle">entity</text>
         <rect x="132" y="0" width="44" height="22" rx="4" fill="#0a0e27" stroke="#a78bfa" stroke-opacity="0.6"/>
@@ -416,45 +561,56 @@
       <g transform="translate(16, 50)">
         <text x="0" y="0" font-size="9" font-weight="700" fill="#64748b" letter-spacing="1">SOURCE  EVIDENCE</text>
         <text x="0" y="16" font-size="12" font-family="Menlo, Consolas, monospace" fill="#00d4ff">"...announced by Dr. Li, the lead..."</text>
-        <text x="0" y="38" font-size="9" font-weight="700" fill="#64748b" letter-spacing="1">SI  EVIDENCE</text>
-        <text x="0" y="54" font-size="12" font-family="Menlo, Consolas, monospace" fill="#4ade80">"...by Dr. Li..."</text>
+        <text x="0" y="36" font-size="9" font-weight="700" fill="#64748b" letter-spacing="1">SI  EVIDENCE</text>
+        <text x="0" y="52" font-size="12" font-family="Menlo, Consolas, monospace" fill="#4ade80">"...Dr. Li ..."</text>
       </g>
       <g transform="translate(420, 50)">
-        <rect width="160" height="64" rx="8" fill="url(#grad-score)" filter="url(#glow)"/>
-        <text x="80" y="22" font-size="10" font-weight="700" fill="#f8fafc" text-anchor="middle" letter-spacing="1">PHASE 10 MATCH</text>
-        <text x="80" y="44" font-size="20" font-weight="800" fill="#f8fafc" text-anchor="middle">equivalent</text>
-        <text x="80" y="58" font-size="10" fill="#fce7f3" text-anchor="middle">score_i = 1.0</text>
+        <rect width="160" height="56" rx="8" fill="url(#grad-score)" filter="url(#glow)"/>
+        <text x="80" y="20" font-size="10" font-weight="700" fill="#f8fafc" text-anchor="middle" letter-spacing="1">PHASE 10 MATCH</text>
+        <text x="80" y="40" font-size="18" font-weight="800" fill="#f8fafc" text-anchor="middle">equivalent</text>
+        <text x="80" y="52" font-size="9" fill="#fce7f3" text-anchor="middle">score_i = 1.0</text>
       </g>
-      <g transform="translate(16, 124)">
-        <text x="0" y="0" font-size="11" font-weight="600" fill="#cbd5e1">Contribution:</text>
-        <text x="100" y="0" font-size="12" font-family="Menlo, Consolas, monospace" fill="#ec4899">imp 3 × 1.0 = 3.0 / 3</text>
-        <text x="290" y="0" font-size="11" fill="#94a3b8">+3.0 → anchor_fidelity numerator</text>
+      <g transform="translate(16, 116)">
+        <text x="0" y="0" font-size="11" font-weight="600" fill="#cbd5e1">Reasoning:</text>
+        <text x="86" y="0" font-size="10" font-style="italic" fill="#a78bfa">"Dr. Li → Li (SI), equiv"</text>
+        <text x="0" y="22" font-size="11" font-weight="600" fill="#cbd5e1">Contribution:</text>
+        <text x="100" y="22" font-size="11" font-family="Menlo, Consolas, monospace" fill="#ec4899">imp 3 × 1.0 = 3.0 / 3</text>
+        <text x="290" y="22" font-size="10" fill="#94a3b8">→ +3.0 to anchor_fidelity numerator</text>
+      </g>
+      <!-- Repair attempt indicator -->
+      <g transform="translate(16, 150)">
+        <text x="0" y="0" font-size="10" font-weight="600" fill="#fbbf24">⚙ Runner:</text>
+        <text x="70" y="0" font-size="10" font-family="Menlo, Consolas, monospace" fill="#94a3b8">repair_attempts = 0, validated = true  ✓</text>
       </g>
     </g>
   </g>
 
-  <!-- FOOTER -->
-  <g transform="translate(60, 1350)">
+  <!-- ============== FOOTER ============== -->
+  <g transform="translate(60, 1470)">
     <g transform="translate(0, 0)">
       <circle cx="10" cy="-4" r="8" fill="url(#grad-source)"/>
       <text x="28" y="0" font-size="12" fill="#cbd5e1">Source agents (4/sample)</text>
     </g>
     <g transform="translate(220, 0)">
       <circle cx="10" cy="-4" r="8" fill="url(#grad-ref)"/>
-      <text x="28" y="0" font-size="12" fill="#cbd5e1">Reference agents (4/sample, auxiliary)</text>
+      <text x="28" y="0" font-size="12" fill="#cbd5e1">Reference agents (4/sample)</text>
     </g>
-    <g transform="translate(540, 0)">
+    <g transform="translate(460, 0)">
       <circle cx="10" cy="-4" r="8" fill="url(#grad-si)"/>
-      <text x="28" y="0" font-size="12" fill="#cbd5e1">SI matching agents (4/system)</text>
+      <text x="28" y="0" font-size="12" fill="#cbd5e1">SI matching (4/system)</text>
     </g>
-    <g transform="translate(820, 0)">
+    <g transform="translate(680, 0)">
       <circle cx="10" cy="-4" r="8" fill="url(#grad-deliv)"/>
       <text x="28" y="0" font-size="12" fill="#cbd5e1">Delivery agents (2/system)</text>
     </g>
-    <g transform="translate(1080, 0)">
-      <circle cx="10" cy="-4" r="8" fill="url(#grad-score)"/>
-      <text x="28" y="0" font-size="12" fill="#cbd5e1">Deterministic scoring (Python, zero LLM)</text>
+    <g transform="translate(900, 0)">
+      <circle cx="10" cy="-4" r="8" fill="url(#grad-warn)"/>
+      <text x="28" y="0" font-size="12" fill="#cbd5e1">Runner repair loop</text>
     </g>
-    <text x="1480" y="0" font-size="11" fill="#64748b">8 LLM/sample + 6 LLM/system · deterministic · reproducible</text>
+    <g transform="translate(1100, 0)">
+      <circle cx="10" cy="-4" r="8" fill="url(#grad-score)"/>
+      <text x="28" y="0" font-size="12" fill="#cbd5e1">Deterministic scoring (Python)</text>
+    </g>
+    <text x="1380" y="0" font-size="11" fill="#64748b">8 LLM/sample + 6 LLM/system + up to 12 repair calls · deterministic, reproducible</text>
   </g>
 </svg>
