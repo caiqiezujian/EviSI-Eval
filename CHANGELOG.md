@@ -1,5 +1,62 @@
 # Changelog
 
+## [0.7.0] - 2026-07-01
+
+> **协议版本**：`evisi_eval_v0.7` ｜ **实现版本**：`0.7.0`
+
+### 核心重构
+
+- **Source + Reference 联合抽取**：替换 v0.6 的 Source-先抽、Reference-后投影模式。Source 与 Reference 在 4 个对应阶段（Segment / Anchor / Event / Relation）一同抽取，由 Python 按位置 zip 为一张 Joint Card。**每个 sample 只做一次**，冻结后所有 SI 系统共享。
+- **位置匹配取代 ID 交叉引用**：Source 数组第 i 条 ↔ Reference 第 i 条 ↔ SI 第 i 条，校验靠数组长度相等与逐位置 ID 匹配，**不再维护 ID 映射表**。消除 ID 漂移导致的复杂交叉校验。
+- **SHA-256 冻结 Joint Card**：用 `artifact_hash()` 对所有非 metadata 字段计算 SHA-256，断点续跑时先校验 hash 再复用，避免不同 prompt/model/输入混入同一 run。
+- **14 阶段流水线**（v0.6 的 16 阶段被重排、合并、聚焦）：
+  - **Source 侧（4 calls/sample）**：Segment / Anchor / Event / Relation，全程不接触任何译文。
+  - **Reference 侧（4 calls/sample）**：Align / Anchor / Event / Relation，仅辅助 SI 在目标语中定位内容。
+  - **SI 侧（6 calls/system）**：Align / Anchor Match / Event Match / Relation Match / Fluency / SI Expression，匹配基于 Source 语义权威 + Reference 辅助。
+- **Stage 级缓存 + Resume**：12 个 LLM 阶段（1-12）独立 JSON 缓存；Phase 13/14 直接调用。`run_manifest_v07.json` 记录 protocol_version、implementation_hash、prompt_hashes、provider/model、dimension_weights，任何一项变更即拒绝 resume。
+
+### 协议层
+
+- **Reference 改为辅助而非标准**：SI 与 Reference 不同不自动判错，SI 在目标语中给出与 Source 语义等价的表达即为 `equivalent`。
+- **Relation 依赖阻断**：当 Relation 端点 Event 全部为 missing/contradiction 时，Relation 标记 `not_scored` 从分母排除，避免双倍惩罚。
+- **`not_scored` validator**：声明 `not_scored` 的 Relation 必须其全部 `source_event_ids` 对应 Event 匹配为 missing/contradiction，否则报错（结构硬约束）。
+- **5 维评分体系（确定性）**：anchor 35% / event 35% / relation 10% / fluency 12% / si_expression 8%。Match 值映射 `equivalent=1.0`、`partial=0.5`、`contradiction/missing=0.0`，`uncertain` / `not_scored` 从分母排除。`calculate_v07_scores()` 全部在 Python 端实现，**LLM 不参与计分**。
+- **Source item 重要性加权**：Anchor / Event / Relation 的 `importance ∈ {1,2,3}` 作为评分权重，关键信息比背景信息对分数影响更大。
+- **score_status 三态**：`final`（无 uncertain）/ `provisional_review_required`（存在 uncertain，需人工复审）/ `provisional_no_decisions`（所有 fidelity items 均为 uncertain → `final_score=null`）。
+- **信息隔离矩阵**：14 个 Agent 各自的 Source / Reference / SI 可见性在 doc 第 12 章明确定义，代码层在 payload 组装时物理隔离。
+
+### 实现层
+
+- **新模块**：
+  - `evisi_eval/v07_agents.py` — `V07JointCardBuilder`（Phase 1-8 + Joint Card 组装）、`V07SIMatcher`（Phase 9-14 + 调 `calculate_v07_scores`）。
+  - `evisi_eval/v07_pipeline.py` — `run_v07_pipeline()` 编排、断点续跑、metrics 计算、离线 `check_v07_input_files()`。
+  - `evisi_eval/v07_validation.py` — 14 个 validator + `calculate_v07_scores()` + 类型/权重/状态常量。
+- **自包含 Prompt**：12 个 v07 prompt + 2 个 delivery agent prompt + 1 个共享 `schema_repair` prompt 全部独立完整，**无协议注入、无外部模板拼接**。
+- **Flat JSON 输出**：所有 LLM artifact 均为扁平数组（`source_anchors[]`、`anchor_matches[]` …），无 `component_results` / `operators` 网格 / `hard_requirement` 结构。
+- **Evidence 逐字校验**：所有 `source_evidence` / `reference_evidence` / `si_evidence` 必须为对应 segment 文本的逐字连续子串。修复 prompt 只修结构（ID 格式、数组长度、逐字性），不重做语义。
+- **Runner 调度器**：每个 Phase 1 次 LLM 调用 → 结构验证 → 最多 2 次 `schema_repair` 修复 → 可选 fallback。失败记入 `failures.jsonl`，CLI 返回非零退出码。
+- **HTTP client 韧性**：`HTTPJSONClient`（stdlib `urllib`）默认超时 900s，最多 3 次重试，仅对 transient 错误（408/409/429/5xx + 网络错误）重试。
+- **CLI 扩展**：`check-input`（离线校验）、`check-provider`（连通性测试）、`run --resume`（hash 兼容断点续跑）、`--limit-samples / --limit-outputs / --provider / --output-dir / --run-name`。
+
+### 测试
+
+- `ScriptedLLMClient`：FIFO 响应队列，零 API key、零网络 I/O 的确定性 client。
+- 7 个 pytest 全过：完整 14 阶段流水线、Joint Card 冻结与 hash、partial/contradiction/missing 非满分路径、输入非法时零 LLM 调用直接报错。
+- 预制响应必须满足所有 validator 约束（无损拼接、连续 ID、evidence 逐字），并以 ID/数组长度贯穿阶段间依赖。
+
+### 配套文档
+
+- `docs/v0.7_protocol_design.md`（1557 行）— 完整协议设计：14 阶段详述、字段语义、硬约束表、信息隔离矩阵、Runner 调度、校验系统、确定性评分、stage 缓存、信息隔离、模块架构、CLI、输出结构、测试策略、约束清单、3 个附录（Prompt 清单、Type 枚举全集、关键设计决策记录）。
+- `docs/assets/evisi_eval_v07_architecture_v2.png` — v0.7 流水线架构图（Joint Card Builder / SI Matching / Deterministic Scoring 三段式 + 五维权重可视化）。
+
+### 移除 / 变更
+
+- 移除 v0.6 的 source-conditioned projection 链路、Adjudicator 三模型复核、嵌套 `component_results` 结构、`hard_requirement` 列表。
+- 旧 `docs/assets/evisi_eval_v07_architecture.png`（v1 草图）替换为 v2 学术风格版本。
+- `docs/v0.7_design/`（设计草稿 00_architecture / 01_schema / 03_scoring）保留为设计过程记录，已被 `v0.7_protocol_design.md` 取代。
+
+---
+
 ## [0.6.2] - 2026-07-01
 
 - Source Event 改为按 Source Segment 独立抽取，解决整样本 Event 请求持续空响应的问题。
