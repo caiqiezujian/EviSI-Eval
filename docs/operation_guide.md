@@ -1,82 +1,75 @@
-# 运行指南
+# EviSI-Eval v0.5 操作指南
 
-## 1. 环境
+## 1. 本地安装
 
-要求 Python 3.10 或更高版本。
+安装 Python 3.12 64-bit（最低支持 Python 3.10），安装时启用 `Add Python to PATH` 和 Python Launcher。
 
-```powershell
+推荐使用 Conda：
+
+```bash
 cd D:\EviSI-Eval-Agent
-python -m pip install -e .
-```
-
-测试依赖：
-
-```powershell
-python -m pip install -e ".[dev]"
+conda create -n evisi-eval python=3.12 pip -y
+conda activate evisi-eval
+python -m pip install -r requirements.txt
 python -m pytest -q
 ```
 
-## 2. 配置模型
+或者：
 
-复制本地密钥模板：
-
-```powershell
-Copy-Item .\local_secrets.py.example .\local_secrets.py
+```bash
+conda env create -f environment.yml
+conda activate evisi-eval
+python -m pytest -q
 ```
 
-只填写实际使用的 Provider。该文件已被 Git 忽略。也可以设置同名 Windows 环境变量。
+不使用 Conda 时才采用下面的 venv 方式。
+
+```powershell
+cd D:\EviSI-Eval-Agent
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pytest -q
+```
+
+## 2. 配置和检查 DeepSeek
+
+确保新终端中存在 `DEEPSEEK_API_KEY` 和 `DEEPSEEK_MODEL`：
 
 ```powershell
 python -m evisi_eval check-provider --provider deepseek
 ```
 
-## 3. 准备数据
+## 3. 校验现有输入
 
-标准输入分别是样本 JSONL 和系统输出 JSONL。若原始数据为一个对象中包含多个 `*_trans` 字段的宽表，可运行：
-
-```powershell
-python -m evisi_eval import-data `
-  --input input1.txt input2.txt `
-  --samples-output data/user_samples.jsonl `
-  --outputs-output data/user_outputs.jsonl
+```bash
+python -m evisi_eval check-v06-input --samples data/user_samples.jsonl --outputs data/user_two_files_si_only_outputs.jsonl
 ```
 
-导入器只读取 `*_trans` 作为待测同传译文；对应的 `*_asr` 可以保留在导入结果中，但当前评测不会使用。
+该命令只做字段归一化和一致性检查，不调用模型。现有 `transcript/offline_translation` 会自动映射为 `source_text/reference_translation`，`system_asr` 被忽略。
 
-## 4. 运行评测
+## 4. 先跑一个样本
 
-```powershell
-python -m evisi_eval run `
-  --samples data/user_samples.jsonl `
-  --outputs data/user_outputs.jsonl `
-  --provider deepseek `
-  --review-provider deepseek `
-  --output-dir results `
-  --run-name pilot_001
+```bash
+python -m evisi_eval run-v06 --samples data/user_samples.jsonl --outputs data/user_two_files_si_only_outputs.jsonl --provider deepseek --run-name v061_smoke --output-dir results --limit-samples 1 --limit-outputs 1
 ```
 
-断点续跑：
-
-```powershell
-python -m evisi_eval run `
-  --samples data/user_samples.jsonl `
-  --outputs data/user_outputs.jsonl `
-  --provider deepseek `
-  --review-provider deepseek `
-  --output-dir results `
-  --run-name pilot_001 `
-  --resume
-```
-
-如果输入、Prompt、模型、权重或版本发生变化，续跑会直接拒绝。此时应使用新的 `run-name`。
+一个样本有多个系统时，所有系统都会跑；只跑一个输出可加 `--limit-outputs 1`，或加 `--system-name 系统名`。
 
 ## 5. 检查结果
 
-- `source_cards.jsonl`：检查源文锚点、事件和关系是否合理。
-- `results.jsonl`：完整机器可读证据链。
-- `metrics.json`：按系统汇总的分数和错误数量。
-- `report.html`：适合人工浏览的逐样本报告。
-- `review_queue`：当前没有足够证据自动扣分的项目。
-- `failures.jsonl`：模型调用或结构校验失败，不能当作有效评测结果。
+先看 `results/v061_smoke/failures.jsonl`。为空时再看：
 
-正式实验应先抽样审查 Source Card，再固定 Prompt、模型和配置运行所有系统。
+- `source/source_cards_v06.jsonl`：冻结 Source 义务。
+- `reference/reference_projection_cards.jsonl`：Reference 辅助投影。
+- `context/evaluation_context_cards.jsonl`：三阶段 hash 和 ID 映射。
+- `target/si_projection_cards.jsonl`：同传逐项投影。
+- `score/final_results_v06.jsonl`：逐项诊断、score status 和分数。
+- `report.html`：浏览报告。
+
+## 6. 失败处理
+
+失败记录会说明 stage 和验证错误。先修 Prompt/契约或输入，再换一个新的 `run-name` 重跑。只有代码、Prompt、输入、模型和计分策略完全不变时才使用 `--resume`。
+
+不要直接编辑中间 JSONL 后继续同一实验；这会破坏 manifest 对应的可复现条件。

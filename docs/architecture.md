@@ -1,111 +1,75 @@
-# 系统架构
+# EviSI-Eval v0.5 架构
 
-## 1. 目标与边界
+## 1. 设计原则
 
-EviSI-Eval 评价同传系统的最终译文质量。核心问题不是计算表面字符串相似度，而是回答：听众是否从同传译文中获得了与源文一致的对象、数量、事件、参与者角色、边界条件和逻辑关系，同时译文是否可理解且没有明显冗余。
+- **冻结基准**：一个源样本只调用一次 SourceEvidenceAgent，所有系统共享同一 `source_card_hash`。
+- **职责分离**：对齐、目标抽取、表达评价、内容判定、复核、裁决、计分和总结分开执行。
+- **信息隔离**：目标证据 Agent 物理拿不到源文；Reviewer 拿不到 Primary 的判定。
+- **证据局部性**：内容判定只能使用直接对齐单元及前后各一个相邻单元，避免全篇碰巧匹配。
+- **语义与数学分离**：LLM 负责语义结构和 verdict，Python 负责验证、覆盖率和分数计算。
+- **失败显式化**：结构修复仍失败则记录 failure，不生成任意语义 fallback。
 
-系统要求源语 `transcript`。离线译文可选，只提供目标语言表达参考。系统名称不会进入任何评测 Prompt，系统自己的 ASR 不参与当前轨道。
-
-## 2. 设计原则
-
-1. 源文权威：所有语义要求必须追溯到源文逐字证据。
-2. 表示与评分分离：LLM 生成结构化分析和局部 verdict，Python 生成分数。
-3. 定位与核验分离：句级对齐器先定位译文单元；目标分析器可使用源文清单提高召回，但每个目标项目必须由译文逐字证据独立支持。
-4. 两级显式对齐：先建立源句—译文单元映射，再核验事实锚点、事件和关系。
-5. 同传友好：允许压缩、合句、拆句、延迟表达和有限局部重排。
-6. 证据约束：源文和译文证据跨度必须逐字存在于对应文本。
-7. 错误单归因：同一语义损失只在一个维度扣分。
-8. 失败关闭：结构化输出无法修复时记录失败，不用不完整结果生成看似精确的分数。
-
-## 3. 数据流
-
-```mermaid
-flowchart TB
-  subgraph SRC[源文建模]
-    A[源文转录] --> B[Source Anchor Extractor]
-    B --> C[Source Event Extractor]
-    C --> D[Source Card Validator<br/>+ SHA-256]
-  end
-
-  subgraph TGT[译文建模]
-    E[同传译文] --> F[Sentence Aligner]
-    F --> G[Target Semantic Analyzer]
-    G --> H[Target Validator]
-  end
-
-  D --> I[Semantic Aligner]
-  H --> I
-  I --> J[Target Delivery Evaluator]
-  J --> K[Error Reviewer]
-  K --> L[Deterministic Scorer]
-  L --> M[JSONL + HTML 报告]
-```
-
-文字版（与图等价，便于复制）：
+## 2. 执行图
 
 ```text
-Sample
-  -> Source Anchor Extractor
-  -> Source Event Extractor
-  -> Source Card Validator + SHA-256
-  -> frozen Source Card
+每个 sample_id：
+  SourceEvidenceAgent(source_text)
+    -> validated frozen source card
 
-SI Translation
-  -> LLM Sentence Segmenter and Source-Target Aligner
-  -> Target Anchor / Event / Relation Analyzer
-  -> Target Validator
-
-Source Card + Target Analysis + Raw Translation
-  -> Semantic Aligner
-  -> Target Delivery Evaluator
-  -> Error Reviewer
-  -> Deterministic Scorer
-  -> JSONL / Metrics / HTML Report
+每个 sample_id + system_name：
+  AlignmentAgent(source_units, si_translation)
+    -> eval_units
+  TargetEvidenceAgent(eval_unit_id + target_unit only)
+    -> target anchors/events/relations
+  FluencyAgent(si_translation only)
+    -> fluency issues
+  SIExpressionAgent(source_text + si_translation)
+    -> SI expression issues
+  PrimaryJudgeAgent(source card + target card)
+  ReviewerAgent(source card + target card, blind to primary)
+    -> disagreement or confidence < 0.60 ?
+       yes: AdjudicatorAgent
+       no: agreement result
+  deterministic calculate_scores()
+  SummaryAgent(read-only result)
 ```
 
-## 4. 源文建模
+## 3. Agent 边界
 
-### 4.1 事实锚点
+| Agent | 可见输入 | 禁止职责 |
+|---|---|---|
+| SourceEvidence | 原文、语言、领域 | 看译文、打分、按系统重构源卡 |
+| Alignment | source units、完整译文 | 抽取/评价/评分 |
+| TargetEvidence | 目标单元 | 看源文、判断忠实度 |
+| Fluency | 完整译文 | 判断误译漏译 |
+| SIExpression | 原文、完整译文 | 重复处罚内容错误 |
+| PrimaryJudge | 两侧结构化证据 | 重抽取、评分、总结 |
+| Reviewer | 与 Primary 相同，但看不到 Primary 输出 | 迎合首轮结果 |
+| Adjudicator | 争议 case 和两侧证据 | 处理未触发 case |
+| Summary | 最终判定与代码分数 | 改 verdict 或分数 |
 
-事实锚点覆盖人名、机构、地点、时间、数量、金额、产品、项目、命名事件和领域术语。锚点按句中出现位置建模，同一对象跨句重复时保留多个 occurrence。
+真实 `system_name` 不进入 LLM payload，统一使用 `anonymous_system`。参考译文只留档，不进入核心 Agent。
 
-数量不作为脱离上下文的裸值处理。`150,000 jobs` 应同时保留逐字跨度、规范化数值、单位和 referent，避免将另一处 `150,000` 错配为当前事实。
+## 4. 验证和修复
 
-否定、情态、方向和范围不是实体，统一进入事件属性。这样可以避免同一处 `may not increase` 同时在事实层和事件层扣分。
+每个 LLM 阶段执行一次生成和一次结构修复机会。验证覆盖：
 
-### 4.2 最小事件
+- 必需数组和字段类型；
+- ID 连续性与引用完整性；
+- source/target 无损拼接；
+- source unit 恰好覆盖一次；
+- evidence span 逐字存在；
+- judgement 与源项目严格一一对应；
+- 目标证据属于引用的局部 eval units；
+- verdict、confidence、severity 合法；
+- 同一表达维度不重复处罚同一 target span。
 
-事件由中心谓词、参与者角色、关联锚点、边界属性和证据跨度组成。并列的独立动作应拆分；原因、条件、对比、归因等事件间链接进入 `relations`，不再复制成额外事件。
+Repair 只能修结构，不能重做语义。修复后仍失败，当前样本/系统写入 `failures.jsonl`。
 
-每个事件同时保留：
+## 5. 复现与恢复
 
-- `evidence_spans`：可确定性检查的源文逐字证据。
-- `canonical_meaning`：便于跨语言核验的规范化语义。
-- `predicate` 和 `arguments`：检查动作和参与者角色。
-- `attributes`：检查 polarity、modality、direction、scope 和 tense/aspect。
-- `linked_anchor_ids`：建立事件与事实锚点的依赖关系。
+`run_manifest.json` 记录输入哈希、Prompt 哈希、核心实现哈希、模型和计分策略。`--resume` 只有在这些字段全部一致时才允许继续，以免把不同实验条件混入同一 run。
 
-## 5. 译文建模与对齐
+## 6. 客观性边界
 
-句级对齐器根据冻结源文分句切分同传译文，并为每个源句输出一条定位记录。记录允许 1:1、1:N、N:1、omitted 和 uncertain，不能机械假设 S1 对应 T1。目标分析器随后在冻结目标单元中生成目标锚点、目标事件和目标关系。源句只用于定位和召回，所有目标项目仍必须由译文逐字证据支持。该分析是索引，不是核验结论。
-
-对齐器不得假定 `S1 -> T1`。它可以把一个源事件对齐到多个目标单元，也可以把多个源事件对齐到一个压缩目标单元。目标分析器漏掉候选项时，对齐器仍必须检查原始译文。
-
-对齐输出必须为每个 required 源项目提供一个 verdict，并引用目标逐字证据。没有矛盾证据时，`incorrect` 与 `contradicted` 不应代替 `missing`；证据不足时使用 `ambiguous`。
-
-## 6. 复核与确定性聚合
-
-所有非正确 verdict 和目标语言问题进入错误复核。复核器只能通过译文逐字反证否定语义错误，离线译文不能充当反证。复核状态为 `valid`、`invalid` 或 `uncertain`。
-
-只有高置信 `valid` 错误自动扣分。`uncertain` 项进入 `review_queue`，不自动扣分。最终聚合器按固定权重、重要性和 verdict 系数计算分数。
-
-## 7. 扩展接口
-
-当前 Source Card 可继续承载以下独立轨道：
-
-- 音频质量：噪声、断音、说话人重叠。
-- 流式性能：延迟、修订、稳定性、闪烁率。
-- 领域专项：医疗、法律、金融中的高风险错误策略。
-- 人工校准：冻结卡片、双人标注、仲裁和相关性分析。
-
-这些轨道应新增输入和结果字段，不应从最终文本反推不可观测指标。
+该架构把主观语义判断变为可定位、可复核的结构化判断，但 LLM verdict 仍是测量模型的输出。真正的 benchmark 有效性必须通过人工金标、标注者一致性、模型间稳定性和权重校准验证。

@@ -1,78 +1,67 @@
-# 数据契约
+# EviSI-Eval v0.5 数据契约
 
-## 1. 样本输入
+所有输入和主要产物使用 UTF-8 JSONL，一行一个 JSON 对象。
 
-每行一个 JSON 对象：
-
-```json
-{"sample_id":"s1","transcript":"source transcript","offline_translation":"optional reference","src_lang":"en","tgt_lang":"zh","domain":"medical"}
-```
-
-必填字段：`sample_id`、`transcript`。可选字段：`offline_translation`、`src_lang`、`tgt_lang`、`domain`。
-
-## 2. 系统输出
+## 输入样本
 
 ```json
-{"sample_id":"s1","system_name":"system_a","si_translation":"final SI translation"}
+{"sample_id":"s1","source_text":"...","reference_translation":null,"src_lang":"en","tgt_lang":"zh","domain":"general"}
 ```
 
-`(sample_id, system_name)` 必须唯一。当前评测不读取系统 ASR。
+- `sample_id`：非空且唯一。
+- `source_text`：非空源语转录。
+- `reference_translation`：可选，仅留档，不进入核心评测。
 
-## 3. Source Card
+## 系统输出
 
-Source Card 的主要数组为：
-
-- `sentences`：源文逐字分句。
-- `anchors`：出现级事实锚点。
-- `events`：最小事件、参与者和边界属性。
-- `relations`：事件之间的逻辑关系。
-- `allowed_omissions`：填充语、假启动等允许省略内容。
-- `metadata`：schema 版本、Prompt 哈希、模型、请求 ID 和 `card_hash`。
-
-正式结构见 `schemas/source_card.schema.json`。
-
-## 4. Target Analysis
-
-在 Target Analysis 之前，`sentence_alignment` 保存：
-
-- `target_units`：基于源文语义边界切分的逐字译文单元。
-- `sentence_alignments`：每个源句恰好一条 1:1、1:N、N:1、omitted 或 uncertain 记录。
-- `unaligned_target_unit_ids`：添加、填充或无法归属的译文单元。
-
-正式结构见 `schemas/sentence_alignment.schema.json`。
-
-- `target_units`：目标语义单元。
-- `target_anchors`：译文锚点索引。
-- `target_events`：译文事件索引。
-- `target_relations`：译文实际表达的事件关系索引。
-
-所有目标证据必须逐字存在于 `si_translation`。正式结构见 `schemas/target_analysis.schema.json`。
-
-## 5. Evaluation Result
-
-结果同时保留输入、源卡、目标分析、三类对齐、两类目标语言问题、复核、维度分数和最终分数。关键字段包括：
-
-```text
-source_card
-sentence_alignment
-target_analysis
-anchor_alignments
-event_alignments
-relation_alignments
-fluency_issues
-efficiency_issues
-dimension_scores
-attributed_errors
-review_queue
-score_before_caps
-final_score
+```json
+{"sample_id":"s1","system_name":"system_a","si_translation":"..."}
 ```
 
-正式结构见 `schemas/evaluation_result.schema.json`。
+`(sample_id, system_name)` 必须唯一。
 
-## 6. 证据规则
+## Source Card
 
-- `sentence_text`、`source_span`、`evidence_spans`、`source_cues` 必须逐字存在于源文。
-- `unit_text`、`target_span`、`target_spans` 必须逐字存在于同传译文。
-- `canonical_meaning`、`normalized_value` 可以规范化，但不能作为逐字证据。
-- ID 在各自命名空间内唯一，所有引用必须指向已有项目。
+包含 `source_units`、`source_anchors`、`source_events`、`source_relations`。所有源项目都有 `importance: 1|2|3` 和逐字证据。卡片 metadata 包含 `source_card_hash` 与冻结标记。
+
+## Eval Unit
+
+```json
+{"eval_unit_id":"E1","source_unit_ids":["S1"],"target_unit":"...","alignment_status":"aligned","reason":"..."}
+```
+
+状态仅为 `aligned|source_omitted|target_addition|uncertain`。所有 target units 拼接必须等于原译文；所有 source unit IDs 必须恰好覆盖一次。
+
+## Judgement
+
+```json
+{
+  "judgement_id":"AJ1",
+  "source_anchor_id":"SA1",
+  "source_evidence_spans":["..."],
+  "eval_unit_ids":["E1"],
+  "target_anchor_ids":["TA1"],
+  "target_evidence_spans":["..."],
+  "verdict":"correct",
+  "confidence":0.95,
+  "reason":"..."
+}
+```
+
+Event 和 Relation 分别替换 source/target ID 字段。最终结果会增加 `review_verdict`、`review_confidence` 和 `resolution`。
+
+## 表达问题
+
+```json
+{"issue_id":"F1","issue_type":"grammar_fragment","target_span":"...","severity":"moderate","reason":"..."}
+```
+
+Severity 仅为 `minor|moderate|major|critical`。
+
+## 最终结果
+
+核心字段包括三类最终 judgements、两类 issues、`dimension_scores`、`dimension_weights`、`score_diagnostics`、`final_score`、`score_status`、`review` 和 `score_summary`。
+
+当适用内容维度没有任何已决定项目时，该维度分数和 `final_score` 为 `null`，状态为 `provisional_no_decisions`。`score_diagnostics.<dimension>.decision_status` 可取 `not_applicable`、`no_decisions`、`partial_decisions` 或 `complete`。
+
+机器可读 Schema 位于 `schemas/`。Python 运行时验证还额外执行跨字段和逐字证据约束。

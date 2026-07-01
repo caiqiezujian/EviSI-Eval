@@ -1,0 +1,246 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1536 512" width="1536" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0e27"/>
+      <stop offset="50%" style="stop-color:#0d1b3e"/>
+      <stop offset="100%" style="stop-color:#111a3a"/>
+    </linearGradient>
+    <linearGradient id="glow-cyan" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:0.9"/>
+      <stop offset="100%" style="stop-color:#00d4ff;stop-opacity:0.2"/>
+    </linearGradient>
+    <linearGradient id="glow-blue" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#0066ff;stop-opacity:0.8"/>
+      <stop offset="100%" style="stop-color:#0066ff;stop-opacity:0.2"/>
+    </linearGradient>
+    <linearGradient id="bar-cyan" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:0.1"/>
+      <stop offset="100%" style="stop-color:#00d4ff;stop-opacity:0.8"/>
+    </linearGradient>
+    <linearGradient id="bar-blue" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#4a90d9;stop-opacity:0.1"/>
+      <stop offset="100%" style="stop-color:#4a90d9;stop-opacity:0.8"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft-glow">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1536" height="512" fill="url(#bg)"/>
+
+  <!-- Subtle grid -->
+  <g stroke="#1e3a6e" stroke-width="0.5" opacity="0.25">
+    <line x1="0" y1="128" x2="1536" y2="128"/>
+    <line x1="0" y1="256" x2="1536" y2="256"/>
+    <line x1="0" y1="384" x2="1536" y2="384"/>
+    <line x1="256" y1="0" x2="256" y2="512"/>
+    <line x1="512" y1="0" x2="512" y2="512"/>
+    <line x1="768" y1="0" x2="768" y2="512"/>
+    <line x1="1024" y1="0" x2="1024" y2="512"/>
+    <line x1="1280" y1="0" x2="1280" y2="512"/>
+  </g>
+
+  <!-- Decorative rings -->
+  <circle cx="160" cy="256" r="160" fill="none" stroke="#00d4ff" stroke-width="0.5" opacity="0.08"/>
+  <circle cx="160" cy="256" r="120" fill="none" stroke="#00d4ff" stroke-width="0.5" opacity="0.12"/>
+  <circle cx="1376" cy="256" r="160" fill="none" stroke="#0066ff" stroke-width="0.5" opacity="0.08"/>
+  <circle cx="1376" cy="256" r="120" fill="none" stroke="#0066ff" stroke-width="0.5" opacity="0.12"/>
+
+  <!-- ===== FLOW CONNECTIONS ===== -->
+  <!-- Source Text -> SourceCard -->
+  <g fill="none" stroke="#00d4ff" stroke-width="1.5" opacity="0.6" filter="url(#glow)">
+    <path d="M 200 256 Q 230 256 260 256"/>
+    <circle cx="200" cy="256" r="3" fill="#00d4ff"/>
+  </g>
+
+  <!-- SourceCard -> Reference -->
+  <g fill="none" stroke="#00d4ff" stroke-width="1.5" opacity="0.5" filter="url(#glow)">
+    <path d="M 480 210 Q 530 150 580 150"/>
+    <circle cx="480" cy="210" r="2" fill="#00d4ff"/>
+  </g>
+
+  <!-- SourceCard -> SI -->
+  <g fill="none" stroke="#0066ff" stroke-width="1.5" opacity="0.5" filter="url(#glow)">
+    <path d="M 480 300 Q 530 360 580 360"/>
+    <circle cx="480" cy="300" r="2" fill="#0066ff"/>
+  </g>
+
+  <!-- Reference -> Context -->
+  <g fill="none" stroke="#00d4ff" stroke-width="1.5" opacity="0.5" filter="url(#glow)">
+    <path d="M 740 150 Q 780 150 820 180"/>
+    <circle cx="740" cy="150" r="2" fill="#00d4ff"/>
+  </g>
+
+  <!-- Context -> SI -->
+  <g fill="none" stroke="#0066ff" stroke-width="2" opacity="0.7" filter="url(#glow)">
+    <path d="M 880 220 Q 920 280 960 360"/>
+    <circle cx="880" cy="220" r="2" fill="#0066ff"/>
+  </g>
+
+  <!-- SI -> Score -->
+  <g fill="none" stroke="#0066ff" stroke-width="1.5" opacity="0.5" filter="url(#glow)">
+    <path d="M 1200 360 Q 1240 360 1280 360"/>
+    <circle cx="1200" cy="360" r="2" fill="#0066ff"/>
+  </g>
+
+  <!-- Score -> Badge -->
+  <g fill="none" stroke="#00d4ff" stroke-width="1.5" opacity="0.6" filter="url(#glow)">
+    <path d="M 1390 280 Q 1410 280 1420 280"/>
+    <circle cx="1390" cy="280" r="2" fill="#00d4ff"/>
+  </g>
+
+  <!-- ===== NODE 1: SOURCE TEXT ===== -->
+  <g transform="translate(80, 196)" filter="url(#glow)">
+    <rect x="0" y="0" width="120" height="120" rx="10" fill="#0d1b3e" stroke="#00d4ff" stroke-width="1.5"/>
+    <rect x="4" y="4" width="112" height="112" rx="8" fill="#0a1628"/>
+    <text x="60" y="38" text-anchor="middle" fill="#00d4ff" font-size="10" font-family="monospace" font-weight="bold">SOURCE</text>
+    <text x="60" y="54" text-anchor="middle" fill="#00d4ff" font-size="10" font-family="monospace" font-weight="bold">TEXT</text>
+    <rect x="16" y="68" width="88" height="3" rx="1.5" fill="#00d4ff" opacity="0.4"/>
+    <rect x="16" y="75" width="64" height="3" rx="1.5" fill="#00d4ff" opacity="0.25"/>
+    <rect x="16" y="82" width="76" height="3" rx="1.5" fill="#00d4ff" opacity="0.3"/>
+    <rect x="16" y="89" width="52" height="3" rx="1.5" fill="#00d4ff" opacity="0.2"/>
+    <text x="60" y="108" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">semantic</text>
+    <text x="60" y="118" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">authority</text>
+  </g>
+
+  <!-- ===== NODE 2: SOURCE CARD ===== -->
+  <g transform="translate(260, 156)" filter="url(#glow)">
+    <rect x="0" y="0" width="220" height="200" rx="10" fill="#0d1b3e" stroke="#00d4ff" stroke-width="1.5"/>
+    <rect x="4" y="4" width="212" height="192" rx="8" fill="#0a1628"/>
+    <text x="110" y="26" text-anchor="middle" fill="#00d4ff" font-size="10" font-family="monospace" font-weight="bold">SOURCE CARD</text>
+    <text x="110" y="40" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">Frozen Authority</text>
+    <line x1="16" y1="50" x2="204" y2="50" stroke="#1e3a6e" stroke-width="0.5"/>
+
+    <!-- Segment node -->
+    <rect x="16" y="58" width="56" height="40" rx="4" fill="#0d1b3e" stroke="#00d4ff" stroke-width="1" opacity="0.7"/>
+    <text x="44" y="75" text-anchor="middle" fill="#00d4ff" font-size="8" font-family="monospace">Segment</text>
+    <text x="44" y="87" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">G1,G2..</text>
+
+    <!-- Anchor node -->
+    <rect x="82" y="58" width="56" height="40" rx="4" fill="#0d1b3e" stroke="#00d4ff" stroke-width="1" opacity="0.7"/>
+    <text x="110" y="75" text-anchor="middle" fill="#00d4ff" font-size="8" font-family="monospace">Anchor</text>
+    <text x="110" y="87" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">SA1..</text>
+
+    <!-- Event node -->
+    <rect x="148" y="58" width="56" height="40" rx="4" fill="#0d1b3e" stroke="#00d4ff" stroke-width="1" opacity="0.7"/>
+    <text x="176" y="75" text-anchor="middle" fill="#00d4ff" font-size="8" font-family="monospace">Event</text>
+    <text x="176" y="87" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">SE1..</text>
+
+    <!-- Relation node -->
+    <rect x="16" y="106" width="188" height="36" rx="4" fill="#0d1b3e" stroke="#00d4ff" stroke-width="1" opacity="0.7"/>
+    <text x="110" y="122" text-anchor="middle" fill="#00d4ff" font-size="8" font-family="monospace">Relation</text>
+    <text x="110" y="134" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">SR1.. (adjacent constraint)</text>
+
+    <line x1="16" y1="150" x2="204" y2="150" stroke="#1e3a6e" stroke-width="0.5"/>
+
+    <text x="110" y="166" text-anchor="middle" fill="#00d4ff" font-size="8" font-family="monospace">SHA-256 frozen</text>
+    <text x="110" y="180" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">immutable once built</text>
+    <text x="110" y="192" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">4 LLM calls</text>
+  </g>
+
+  <!-- ===== NODE 3: REFERENCE PROJECTION ===== -->
+  <g transform="translate(580, 110)" filter="url(#glow)">
+    <rect x="0" y="0" width="160" height="80" rx="8" fill="#0d1b3e" stroke="#4a90d9" stroke-width="1.5"/>
+    <rect x="4" y="4" width="152" height="72" rx="6" fill="#0a1628"/>
+    <text x="80" y="24" text-anchor="middle" fill="#4a90d9" font-size="9" font-family="monospace" font-weight="bold">REFERENCE</text>
+    <text x="80" y="38" text-anchor="middle" fill="#4a90d9" font-size="9" font-family="monospace" font-weight="bold">PROJECTION</text>
+    <text x="80" y="54" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">Anchor / Event / Relation</text>
+    <text x="80" y="68" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">establishes item_links</text>
+  </g>
+
+  <!-- ===== NODE 4: EVALUATION CONTEXT ===== -->
+  <g transform="translate(820, 140)" filter="url(#glow)">
+    <rect x="0" y="0" width="160" height="80" rx="8" fill="#0d1b3e" stroke="#4a90d9" stroke-width="1.5"/>
+    <rect x="4" y="4" width="152" height="72" rx="6" fill="#0a1628"/>
+    <text x="80" y="24" text-anchor="middle" fill="#4a90d9" font-size="9" font-family="monospace" font-weight="bold">EVALUATION</text>
+    <text x="80" y="38" text-anchor="middle" fill="#4a90d9" font-size="9" font-family="monospace" font-weight="bold">CONTEXT</text>
+    <text x="80" y="54" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">hash-bound: source + ref</text>
+    <text x="80" y="68" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">item_links mapping</text>
+  </g>
+
+  <!-- ===== NODE 5: SI PROJECTION ===== -->
+  <g transform="translate(960, 310)" filter="url(#glow)">
+    <rect x="0" y="0" width="240" height="200" rx="10" fill="#0d1b3e" stroke="#0066ff" stroke-width="1.5"/>
+    <rect x="4" y="4" width="232" height="192" rx="8" fill="#0a1628"/>
+    <text x="120" y="26" text-anchor="middle" fill="#0066ff" font-size="10" font-family="monospace" font-weight="bold">SI PROJECTION</text>
+    <text x="120" y="40" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">conditioned on Source + Reference</text>
+    <line x1="16" y1="50" x2="224" y2="50" stroke="#1e3a6e" stroke-width="0.5"/>
+
+    <!-- Alignment -->
+    <rect x="16" y="58" width="208" height="24" rx="4" fill="#0d1b3e" stroke="#0066ff" stroke-width="1" opacity="0.7"/>
+    <text x="120" y="74" text-anchor="middle" fill="#0066ff" font-size="8" font-family="monospace">Target Alignment (lossless T1,T2..)</text>
+
+    <!-- Anchor projection -->
+    <rect x="16" y="90" width="208" height="24" rx="4" fill="#0d1b3e" stroke="#0066ff" stroke-width="1" opacity="0.7"/>
+    <text x="120" y="106" text-anchor="middle" fill="#0066ff" font-size="8" font-family="monospace">Anchor Projection (AP1..)</text>
+
+    <!-- Event projection -->
+    <rect x="16" y="122" width="208" height="24" rx="4" fill="#0d1b3e" stroke="#0066ff" stroke-width="1" opacity="0.7"/>
+    <text x="120" y="138" text-anchor="middle" fill="#0066ff" font-size="8" font-family="monospace">Event Projection (EP1..)</text>
+
+    <!-- Relation with dependency -->
+    <rect x="16" y="154" width="208" height="24" rx="4" fill="#0d1b3e" stroke="#0066ff" stroke-width="1" opacity="0.7"/>
+    <text x="120" y="170" text-anchor="middle" fill="#0066ff" font-size="8" font-family="monospace">Relation Projection (RP1..)</text>
+
+    <line x1="16" y1="186" x2="224" y2="186" stroke="#1e3a6e" stroke-width="0.5"/>
+    <text x="120" y="198" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">dependency_status blocks bad endpoints</text>
+  </g>
+
+  <!-- ===== NODE 6: DELIVERY + SCORE ===== -->
+  <g transform="translate(1280, 280)" filter="url(#glow)">
+    <rect x="0" y="0" width="110" height="160" rx="8" fill="#0d1b3e" stroke="#00d4ff" stroke-width="1.5"/>
+    <rect x="4" y="4" width="102" height="152" rx="6" fill="#0a1628"/>
+    <text x="55" y="24" text-anchor="middle" fill="#00d4ff" font-size="9" font-family="monospace" font-weight="bold">5D SCORE</text>
+    <text x="55" y="38" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">deterministic</text>
+
+    <!-- Weight bars -->
+    <!-- Anchor 35% -->
+    <rect x="12" y="46" width="10" height="90" rx="2" fill="#00d4ff" opacity="0.08"/>
+    <rect x="12" y="64" width="10" height="72" rx="2" fill="url(#bar-cyan)"/>
+    <text x="17" y="42" text-anchor="middle" fill="#00d4ff" font-size="6" font-family="monospace">35%</text>
+
+    <!-- Event 35% -->
+    <rect x="28" y="46" width="10" height="90" rx="2" fill="#4a90d9" opacity="0.08"/>
+    <rect x="28" y="64" width="10" height="72" rx="2" fill="url(#bar-blue)"/>
+    <text x="33" y="42" text-anchor="middle" fill="#4a90d9" font-size="6" font-family="monospace">35%</text>
+
+    <!-- Relation 10% -->
+    <rect x="44" y="46" width="10" height="90" rx="2" fill="#00d4ff" opacity="0.05"/>
+    <rect x="44" y="82" width="10" height="54" rx="2" fill="#00d4ff" opacity="0.4"/>
+    <text x="49" y="42" text-anchor="middle" fill="#00d4ff" font-size="6" font-family="monospace">10%</text>
+
+    <!-- Fluency 12% -->
+    <rect x="60" y="46" width="10" height="90" rx="2" fill="#4a90d9" opacity="0.05"/>
+    <rect x="60" y="80" width="10" height="56" rx="2" fill="#4a90d9" opacity="0.4"/>
+    <text x="65" y="42" text-anchor="middle" fill="#4a90d9" font-size="6" font-family="monospace">12%</text>
+
+    <!-- SI Expression 8% -->
+    <rect x="76" y="46" width="10" height="90" rx="2" fill="#00d4ff" opacity="0.04"/>
+    <rect x="76" y="85" width="10" height="51" rx="2" fill="#00d4ff" opacity="0.35"/>
+    <text x="81" y="42" text-anchor="middle" fill="#00d4ff" font-size="6" font-family="monospace">8%</text>
+
+    <line x1="12" y1="142" x2="98" y2="142" stroke="#1e3a6e" stroke-width="0.5"/>
+    <text x="55" y="154" text-anchor="middle" fill="#00d4ff" font-size="10" font-family="monospace">final</text>
+  </g>
+
+  <!-- ===== NODE 7: FINAL SCORE BADGE ===== -->
+  <g transform="translate(1420, 206)" filter="url(#soft-glow)">
+    <rect x="0" y="0" width="100" height="100" rx="8" fill="#0d1b3e" stroke="#00d4ff" stroke-width="2"/>
+    <rect x="4" y="4" width="92" height="92" rx="6" fill="#0a1628"/>
+    <text x="50" y="38" text-anchor="middle" fill="#00d4ff" font-size="22" font-weight="bold" font-family="monospace">85.3</text>
+    <line x1="20" y1="48" x2="80" y2="48" stroke="#1e3a6e" stroke-width="0.5"/>
+    <text x="50" y="62" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">anchor  95%</text>
+    <text x="50" y="74" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">event    88%</text>
+    <text x="50" y="86" text-anchor="middle" fill="#4a90d9" font-size="7" font-family="monospace">rel      72%</text>
+  </g>
+
+  <!-- ===== BOTTOM TITLE ===== -->
+  <text x="768" y="462" text-anchor="middle" fill="#ffffff" font-size="13" font-family="monospace" letter-spacing="4" opacity="0.85">EviSI-EVAL AGENT · EVIDENCE-DRIVEN SIMULTANEOUS INTERPRETATION QUALITY EVALUATION</text>
+  <text x="768" y="480" text-anchor="middle" fill="#4a90d9" font-size="10" font-family="monospace" letter-spacing="2" opacity="0.7">v0.6.1 · Source Authority + Conditioned Projection + Hash Traceability</text>
+</svg>

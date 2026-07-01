@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "evisi-eval-agent"
-version = "0.4.1"
+version = "0.7.0"
 description = "Evidence-driven agent for final simultaneous-interpretation quality evaluation"
 requires-python = ">=3.10"
 dependencies = []
@@ -15,3 +15,9 @@ dev = ["pytest>=8.0.0"]
 
 [project.scripts]
 evisi-eval = "evisi_eval.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["evisi_eval*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

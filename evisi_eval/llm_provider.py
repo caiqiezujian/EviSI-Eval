@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import http.client
 import json
 import time
 import urllib.error
@@ -9,6 +10,10 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from .config import ProviderConfig
+
+
+class ProviderOutputError(ValueError):
+    """The provider returned a response, but its model content was not valid JSON."""
 
 
 @dataclass
@@ -35,11 +40,19 @@ class HTTPJSONClient:
         self.model_name = config.model
 
     def generate_json(self, system_prompt: str, payload: dict[str, Any], task: str) -> LLMResponse:
-        if self.config.protocol == "gemini":
-            return self._call_gemini(system_prompt, payload, task)
-        if self.config.protocol == "openai_compatible":
-            return self._call_openai_compatible(system_prompt, payload, task)
-        raise ValueError(f"Unsupported provider protocol: {self.config.protocol}")
+        last_error: ProviderOutputError | None = None
+        for attempt in range(2):
+            try:
+                if self.config.protocol == "gemini":
+                    return self._call_gemini(system_prompt, payload, task)
+                if self.config.protocol == "openai_compatible":
+                    return self._call_openai_compatible(system_prompt, payload, task)
+                raise ValueError(f"Unsupported provider protocol: {self.config.protocol}")
+            except ProviderOutputError as exc:
+                last_error = exc
+                if attempt == 0:
+                    time.sleep(1)
+        raise last_error or RuntimeError(f"{task}: provider output retry failed")
 
     def _call_openai_compatible(
         self, system_prompt: str, payload: dict[str, Any], task: str
@@ -53,6 +66,7 @@ class HTTPJSONClient:
             ],
             "temperature": 0,
             "response_format": {"type": "json_object"},
+            "max_tokens": self.config.max_output_tokens,
         }
         raw, headers = self._post(
             url,
@@ -67,8 +81,12 @@ class HTTPJSONClient:
             content = raw["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError) as exc:
             raise RuntimeError(f"{task}: provider returned an unexpected chat-completions shape") from exc
+        try:
+            data = parse_json_object(content)
+        except ValueError as exc:
+            raise ProviderOutputError(f"{task}: provider returned invalid JSON: {exc}") from exc
         return LLMResponse(
-            data=parse_json_object(content),
+            data=data,
             provider=self.provider_name,
             model=self.model_name,
             request_id=headers.get("x-request-id") or raw.get("id"),
@@ -90,6 +108,7 @@ class HTTPJSONClient:
             "generationConfig": {
                 "temperature": 0,
                 "responseMimeType": "application/json",
+                "maxOutputTokens": self.config.max_output_tokens,
             },
         }
         raw, headers = self._post(url, body, {"Content-Type": "application/json"}, task)
@@ -98,8 +117,12 @@ class HTTPJSONClient:
         except (KeyError, IndexError, TypeError) as exc:
             raise RuntimeError(f"{task}: Gemini returned an unexpected response shape") from exc
         usage = raw.get("usageMetadata") or {}
+        try:
+            data = parse_json_object(content)
+        except ValueError as exc:
+            raise ProviderOutputError(f"{task}: provider returned invalid JSON: {exc}") from exc
         return LLMResponse(
-            data=parse_json_object(content),
+            data=data,
             provider=self.provider_name,
             model=self.model_name,
             request_id=headers.get("x-request-id"),
@@ -119,17 +142,31 @@ class HTTPJSONClient:
             request = urllib.request.Request(url, data=encoded, headers=headers, method="POST")
             try:
                 with urllib.request.urlopen(request, timeout=self.config.timeout_seconds) as response:
-                    response_data = json.loads(response.read().decode("utf-8"))
+                    response_bytes = response.read()
+                    if not response_bytes:
+                        raise http.client.IncompleteRead(response_bytes, 1)
+                    response_data = json.loads(response_bytes.decode("utf-8"))
+                    if not isinstance(response_data, dict):
+                        raise ValueError("provider response root is not a JSON object")
                     response_headers = {k.casefold(): v for k, v in response.headers.items()}
                     return response_data, response_headers
             except urllib.error.HTTPError as exc:
                 last_error = RuntimeError(f"{task}: provider HTTP {exc.code}")
                 if exc.code not in {408, 409, 429, 500, 502, 503, 504}:
                     break
-            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+            except (
+                urllib.error.URLError,
+                TimeoutError,
+                ConnectionError,
+                http.client.IncompleteRead,
+                http.client.RemoteDisconnected,
+                json.JSONDecodeError,
+                UnicodeDecodeError,
+                ValueError,
+            ) as exc:
                 last_error = exc
             if attempt < self.config.max_retries:
-                time.sleep(min(2**attempt, 4))
+                time.sleep(min(2**attempt, 8))
         raise RuntimeError(f"{task}: provider request failed after retries: {last_error}") from last_error
 
 

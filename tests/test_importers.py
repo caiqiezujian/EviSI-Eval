@@ -14,11 +14,12 @@ def test_convert_wide_rows():
     ]
     samples, outputs = convert_wide_rows(rows)
     assert samples[0]["sample_id"] == "en2zh-01-tech_001"
-    assert samples[0]["offline_translation"] == "我去上班。"
+    assert samples[0]["reference_translation"] == "我去上班。"
+    assert samples[0]["source_text"] == "I go to work."
     assert samples[0]["domain"] == "tech"
     assert len(outputs) == 2
     assert outputs[0]["system_name"] == "A"
-    assert outputs[0]["system_asr"] == "I go to work."
+    assert "system_asr" not in outputs[0]
 
 
 def test_read_concatenated_json_objects(tmp_path):

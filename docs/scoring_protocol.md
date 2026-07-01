@@ -1,84 +1,65 @@
-# 评分协议
+# EviSI-Eval v0.5 评分协议
 
-## 1. 维度权重
+## 内容维度
 
-| 维度 | 权重 | 输入 |
-|---|---:|---|
-| 事实锚点准确性 | 30 | `anchor_alignments` |
-| 事件语义保持 | 40 | `event_alignments` |
-| 逻辑关系保持 | 10 | `relation_alignments` |
-| 流利度与可理解性 | 12 | `fluency_issues` |
-| 表达效率与简洁性 | 8 | `efficiency_issues` |
-
-前三个内容维度共 80 分。关系维度在源文没有 required relation 时标记为不适用，总分按实际评估权重归一化，同时公开 `evaluated_weight`。
-
-## 2. 内容维度公式
-
-每个源项目的重要性为 1、2 或 3：
+Anchor、Event、Relation 按源项目 `importance` 加权：
 
 ```text
-item_budget = dimension_weight * item_importance / sum(dimension_item_importance)
-item_deduction = item_budget * verdict_coefficient
-dimension_score = dimension_weight - sum(accepted_item_deduction)
+correct = 1.0
+partially_correct / weakened = 0.5
+incorrect / missing = 0.0
 ```
 
-### 锚点系数
+```text
+dimension_score = 100 × sum(importance × verdict_value) / decided_importance
+coverage = 100 × decided_importance / total_importance
+```
 
-| verdict | 系数 |
-|---|---:|
-| exact / equivalent | 0 |
-| incorrect / missing | 1 |
-| ambiguous | 0，进入复核队列 |
+`uncertain` 不进入已决定分母，并计入 uncertain importance。这样不会把“不确定”伪装成“确定错误”，但任何 uncertain 或 confidence < 0.60 都会把结果标记为 `provisional_review_required`，同时报告 coverage。
 
-### 事件系数
+如果某个适用内容维度的全部项目都是 `uncertain`，则该维度：
 
-| verdict | 系数 |
-|---|---:|
-| covered / compressed_covered | 0 |
-| partially_covered | 0.5 |
-| contradicted / missing | 1 |
-| ambiguous | 0，进入复核队列 |
+```text
+dimension_score = null
+decision_status = no_decisions
+coverage = 0
+```
 
-### 关系系数
+此时样本 `final_score = null`，`score_status = provisional_no_decisions`。系统不会把“无法判断”显示成 0 分，也不会基于其余维度生成容易误读的部分总分。
 
-| verdict | 系数 |
-|---|---:|
-| preserved | 0 |
-| weakened | 0.5 |
-| reversed / missing | 1 |
-| ambiguous | 0，进入复核队列 |
+源项目为空时，该维度为 not applicable，显示数值记 100，诊断中 `applicable=false`。计算样本总分时该维度权重置 0，其余适用维度按原权重比例重新归一化；`effective_dimension_weights` 记录实际权重。因此无 Relation 的样本不会白得 Relation 分。
 
-## 3. 目标语言扣分
+## Importance
 
-流利度单项扣分为 minor 1、major 3、critical 6；表达效率单项扣分为 minor 0.75、major 2、critical 4。各维度扣分不会超过该维度满分。
+- `3`：改变身份、数字、结论、行动、风险、资格、法律/医疗/金融含义，或改变否定、方向、范围、情态。
+- `2`：重要支持、约束、术语或时间地点条件。
+- `1`：不改变核心结论、行动或风险的背景细节。
 
-简洁性不使用字符数或长度比。只评价可定位的无意义重复、重复改述、过量填充、无依据添加和可避免冗长。
+## 表达维度
 
-## 4. 错误去重
+Fluency 和 SI Expression 从 100 分开始，按每个非重复 issue 扣分：
 
-- 事件的 `error_scope=anchor_only` 时，事件错误保留用于诊断，但不重复扣分。
-- 关系的 `independent_error=false` 时，关系错误由关联事件错误解释，不重复扣分。
-- 复核器给出 `duplicate_of` 时，后一个错误不重复扣分。
-- 流利度不能因翻译含义错误扣分，表达效率不能因合理同传压缩扣分。
+```text
+minor = 2
+moderate = 6
+major = 15
+critical = 35
+```
 
-## 5. 复核门槛
+最低为 0。两个维度职责不同：Fluency 衡量目标语可理解性；SI Expression 衡量同传表达策略造成的额外负担。内容错误不得在这两个维度重复扣分。
 
-候选错误只有在复核结果为 `valid` 且复核置信度不低于 0.70 时自动扣分。`invalid` 不扣分；`uncertain` 不扣分并进入人工复核队列。
+## 总分
 
-## 6. 总分封顶
+```text
+Anchor 30% + Event 25% + Relation 20% + Fluency 15% + SI Expression 10%
+```
 
-已确认的关键错误可触发总分封顶：
+分数由 Python 计算，任何 LLM Agent 都不能提交或修改维度分数。
 
-| 条件 | 上限 |
-|---|---:|
-| 关键事件被明确反译 | 55 |
-| 关键关系被反转 | 60 |
-| 关键事件完全缺失 | 65 |
-| 关键锚点明确错误 | 65 |
-| 存在关键不可理解片段 | 60 |
+## 系统级聚合
 
-封顶只作用于已确认错误。报告同时保留 `score_before_caps`、`score_cap` 和触发证据。
+正式 `average_score` 和系统维度均分只聚合 `score_status=final` 的样本；内容维度均分还会排除该维度 `applicable=false` 的样本。待复核但仍有数值的结果单独进入 `provisional_average_score`，仅供诊断，不参与正式排名。`final_score=null` 的结果计入 `unscored_results`，不进入任何均分。
 
-## 7. 版本与校准
+## 待校准参数
 
-权重、系数、Prompt、模型和 schema 都进入运行清单。任何变更必须升级协议版本。获得稳定人工标注集后，应报告系统级排名相关性、样本级相关性、错误分类一致率和复核前后变化。
+Importance 定义、verdict 数值、severity deduction 和维度权重是 v0.5 的预注册工程规则，不是已经由人工数据证明的最优参数。后续必须使用人工标注集检查相关性、排序一致性、敏感性与跨模型稳定性，再决定是否发布新协议版本。

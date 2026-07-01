@@ -1,207 +1,283 @@
 # EviSI-Eval Agent
 
-> 面向同声传译系统最终译文的证据驱动评测 Agent
+> **Evidence-driven Simultaneous Interpretation Quality Evaluation System**
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
-[![Protocol](https://img.shields.io/badge/protocol-evisi_eval_v0.4.1-green.svg)](CHANGELOG.md)
-[![Schema](https://img.shields.io/badge/schema-0.4.1-blueviolet.svg)](schemas/)
+[![Protocol Version](https://img.shields.io/badge/Protocol-evisi_eval_v0.7-00d4ff?style=flat-square)](docs/)
+[![Implementation](https://img.shields.io/badge/Implementation-0.7.0-0066ff?style=flat-square)](pyproject.toml)
+[![Python](https://img.shields.io/badge/Python-3.12+-4a90d9?style=flat-square&logo=python&logoColor=f7df1e)](https://www.python.org/downloads/)
+[![Tests](https://img.shields.io/badge/Tests-passing-22c55e?style=flat-square&logo=pytest&logoColor=049d13)](tests/)
+[![License](https://img.shields.io/badge/License-MIT-00d4ff?style=flat-square)](LICENSE)
+[![DeepSeek](https://img.shields.io/badge/Model-DeepSeek%20V4%20Flash-0066ff?style=flat-square)](https://platform.deepseek.com/)
+[![GitHub stars](https://img.shields.io/github/stars/caiqiezujian/EviSI-Eval?style=flat-square&logo=github&color=00d4ff)](https://github.com/caiqiezujian/EviSI-Eval/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/caiqiezujian/EviSI-Eval?style=flat-square&logo=github&color=4a90d9)](https://github.com/caiqiezujian/EviSI-Eval/network/members)
 
-EviSI-Eval 是面向同声传译系统最终译文的**证据驱动**评测 Agent。系统以源语转录为事实依据，将源文和同传译文分别转换为结构化语义表示，再执行显式对齐、局部核验、独立复核和确定性计分。
+<picture>
+  <source srcset="docs/assets/hero-banner.svg" type="image/svg+xml">
+  <img src="docs/assets/hero-banner.svg" alt="EviSI-Eval Agent Architecture Banner" style="width:100%; border-radius: 12px; margin-bottom: 2rem;">
+</picture>
 
-**核心原则**：大模型不直接生成总分。所有扣分、重复错误抑制、维度汇总和总分封顶都由 Python 按固定协议执行。
+---
 
-## 关键特性
+## 评估范围
 
-- 🎯 **5 维评分** — 事实锚点 / 事件语义 / 逻辑关系 / 流利度 / 表达效率，按重要性加权
-- 🔒 **证据约束** — 源文与译文证据跨度必须逐字存在于对应文本，结构化输出失败时**失败关闭**
-- 🚦 **两级对齐** — 先建立源句—译文单元映射（1:1 / 1:N / N:1 / omitted / uncertain），再核验事实与事件
-- 🧩 **职责分离** — LLM 只产 verdict，Python 算分；句级对齐与项目级核验分离；目标分析器看不到源文以避免确认偏差
-- ⚖️ **确定性聚合** — 所有维度分由 Python 按固定权重、importance 和 verdict 系数计算
-- 🔍 **独立复核** — 每个候选错误必须通过复核才能扣分；置信度 < 0.70 进入人工复核队列
-- 🛡️ **错误单归因** — 同一语义损失只在一个维度扣分；总分封顶防止局部错误被掩盖
+本项目评估**源语转录对应的最终同传文本**质量。不评估音频质量、ASR、首词延迟、平均滞后、增量字幕稳定性或语音播报质量。
 
-## 评测维度
+## v0.7 流水线一览
 
-| 维度 | 权重 | 输入 |
-|---|---:|---|
-| 事实锚点准确性 | 30 | `anchor_alignments` |
-| 事件语义保持 | 40 | `event_alignments` |
-| 逻辑关系保持 | 10 | `relation_alignments` |
-| 流利度与可理解性 | 12 | `fluency_issues` |
-| 表达效率与简洁性 | 8 | `efficiency_issues` |
+<p align="center">
+  <img src="docs/assets/evisi_eval_v07_architecture_v2.png" alt="EviSI-Eval v0.7 Pipeline" style="width:100%; border-radius: 12px; box-shadow: 0 4px 24px rgba(0, 212, 255, 0.15); margin: 1rem 0;">
+</p>
 
-## 架构图
+> **上图中**：上段 8 次 LLM 调用为 Source + Reference **联合抽取**（每 sample 一次），中段 6 次 LLM 调用为每个 SI 系统的**位置匹配**，下段 5 个粉色计分条为**确定性评分**的五维权重（Anchor 35% · Event 35% · Relation 10% · Fluency 12% · SI Expression 8%）。
 
-```mermaid
-flowchart TB
-  subgraph SRC[源文建模]
-    A[源文转录] --> B[Source Anchor Extractor]
-    B --> C[Source Event Extractor]
-    C --> D[Source Card Validator<br/>+ SHA-256]
-  end
+## v0.7 核心思想
 
-  subgraph TGT[译文建模]
-    E[同传译文] --> F[Sentence Aligner]
-    F --> G[Target Semantic Analyzer]
-    G --> H[Target Validator]
-  end
+**Source 是唯一的事实权威。Reference 是辅助，不是参考答案。SI 的评分只看它是否忠实地把 Source 的内容传递出来。**
 
-  D --> I[Semantic Aligner]
-  H --> I
-  I --> J[Target Delivery Evaluator]
-  J --> K[Error Reviewer]
-  K --> L[Deterministic Scorer]
-  L --> M[JSONL + HTML 报告]
+v0.7 采用 **联合抽取 + 位置匹配** 协议：Source 和 Reference 一同抽取，Python 代码按位置 zip 成 Joint Card（8 次 LLM 调用）。Joint Card 冻结后，每个 SI 系统按位置逐项匹配（6 次 LLM 调用），最后确定性计分。
+
+```
+源文 ──▶ Source 抽取 (Seg / Anchor / Event / Relation)
+  │
+  ├──▶ Reference 抽取 (Align / Anchor / Event / Relation)  ← 同一次 LLM 调用批次
+  │         │
+  │         └──▶ Joint Card (Python zip, SHA-256 冻结)
+  │                    │
+  └────────────────────┤
+                       ▼
+              SI 位置匹配 (Align / Anchor / Event / Relation) + Fluency + Expression
+                       │
+                       ▼
+                 确定性评分
 ```
 
-完整设计见 [系统架构](docs/architecture.md)。
+```bash
+# 快速开始
+python -m evisi_eval run \
+  --samples data/user_samples.jsonl \
+  --outputs data/user_system_outputs.jsonl \
+  --provider deepseek \
+  --output-dir results \
+  --run-name my_run \
+  --limit-samples 1 --limit-outputs 1
+
+# 断点续跑
+python -m evisi_eval run ... --resume
+```
+
+## 核心设计原则
+
+| 原则 | 说明 |
+|:---|:---|
+| **Source 事实权威** | Joint Card 一旦冻结，所有后续判断都以其为基准，不可篡改 |
+| **联合抽取** | Source + Reference 一同抽取，语义空间对齐后再冻结 |
+| **位置匹配** | 数组按索引对齐 (source[i] ↔ reference[i] ↔ si[i])，不依赖 ID 交叉引用 |
+| **Reference 辅助而非标准** | Reference 只辅助 SI 的匹配判断，不作为"正确答案"评分 |
+| **哈希溯源** | Joint Card 含 SHA-256 哈希，断点续跑时校验一致性 |
+| **确定性计分** | 所有评分基于 match 值（equivalent / partial / contradiction / missing）按公开规则计算，不依赖 LLM 的二次判断 |
+| **自包含 Prompt** | 所有 prompt 文件独立完整，无需运行时协议注入 |
+
+## v0.6 → v0.7 关键变化
+
+| 维度 | v0.6 | v0.7 |
+|:---|:---|:---|
+| Reference 角色 | 被动投影到 Source items | 与 Source 一同抽取，作为辅助 |
+| Joint Card | 无 | Source + Reference 按位置 zip + SHA-256 冻结 |
+| 匹配方式 | Primary → Reviewer → Adjudicator 三模型 | 单次 LLM 逐项位置匹配 |
+| 协议注入 | 支持 | 全部 prompt 自包含，无注入 |
+| JSON 结构 | 嵌套（`component_results` / `hard_requirement`） | 扁平数组 |
+| 阶段数 | 16 | 14（聚焦 12 阶段缓存 + 2 阶段直调） |
+| 计分模型 | LLM 判定 + 代码加权 | **完全代码端确定性计分**（LLM 不再参与计分） |
+
+> 在完成人工标注与一致性检验前，不应宣称评分已达绝对客观或成为成熟 benchmark。
+
+## 流水线架构 (14 phases)
+
+```
+源文
+  │
+  ├── Phase 1  Source Segment     ──▶ source_segments
+  ├── Phase 2  Source Anchor      ──▶ source_anchors
+  ├── Phase 3  Source Event       ──▶ source_events
+  ├── Phase 4  Source Relation    ──▶ source_relations
+  │
+  ├── Phase 5  Reference Align    ──▶ reference_segments
+  ├── Phase 6  Reference Anchor   ──▶ reference_anchors
+  ├── Phase 7  Reference Event    ──▶ reference_events
+  ├── Phase 8  Reference Relation ──▶ reference_relations
+  │                                    │
+  │                          ☑ Joint Card (Python zip) 冻结
+  │
+Per SI system ─────────────────────────┘
+  ├── Phase 9  SI Align            ──▶ si_segments
+  ├── Phase 10 SI Anchor Match     ──▶ anchor_matches
+  ├── Phase 11 SI Event Match      ──▶ event_matches
+  ├── Phase 12 SI Relation Match   ──▶ relation_matches
+  ├── Phase 13 Fluency             ──▶ fluency issues
+  ├── Phase 14 SI Expression       ──▶ expression issues
+  │
+  └── Python 确定性评分
+```
+
+## Agent 职责表
+
+| Agent | 职责 | 信息边界 |
+|:---|:---|:---|
+| `V07JointCardBuilder` | Source 抽取 + Reference 抽取 + Python zip 冻结 | Source 仅看源文，Reference 看源文+译文 |
+| `V07SIMatcher` | SI 位置对齐 + Anchor/Event/Relation 匹配 + Delivery | Joint Card + SI 译文 |
+| `FluencyAgent` | 评估目标语通顺度 | **仅 SI 译文** |
+| `SIExpressionAgent` | 评估同传特有表达问题 | Source + SI 译文 |
+
+**注意：** v0.7 没有独立的 Judge Agent、Reviewer Agent、Adjudicator Agent——评分直接在 `calculate_v07_scores()` 中通过匹配结果确定。
+
+## 五维评分体系
+
+| 维度 | 权重 | 测量对象 | 证据来源 |
+|:---|---:|:---|:---|
+| **Anchor Fidelity** | 35% | 实体、数字、单位、时间、术语、范围 | `anchor_matches[i].match` |
+| **Event Fidelity** | 35% | 主体、动作/状态、对象、方向、否定、情态 | `event_matches[i].match` |
+| **Relation Fidelity** | 10% | 因果、条件、转折、时序、比较等关系 | `relation_matches[i].match`（跳过 `not_scored` 项） |
+| **Fluency** | 12% | 目标语言本身的通顺度与可理解性 | `fluency_issues[*].severity` 扣除 |
+| **SI Expression** | 8% | 同传表达的效率、冗余和组织负担 | `si_expression_issues[*].severity` 扣除 |
+
+- Source 侧 items 按 `importance: 1 / 2 / 3` 加权
+- Match 值映射：`equivalent=1.0`, `partial=0.5`, `contradiction / missing=0.0`
+- `uncertain` / `not_scored` 项从分母中排除
+- Relation 端点事件 missing/uncertain 时，该 relation 标记 `not_scored`，不参与计算
 
 ## 快速开始
 
+### 1. 安装
+
+```bash
+# 创建环境（推荐 Conda）
+conda create -n evisi-eval python=3.12 pip -y
+conda activate evisi-eval
+
+# 安装依赖
+pip install -e ".[dev,llm]"
+```
+
+### 2. 配置模型
+
 ```powershell
-# 1. 克隆仓库
-git clone https://github.com/caiqiezujian/EviSI-Eval-Agent.git
-cd EviSI-Eval-Agent
+# 设置用户级环境变量
+[Environment]::SetEnvironmentVariable("DEEPSEEK_API_KEY", "your-api-key", "User")
+[Environment]::SetEnvironmentVariable("DEEPSEEK_MODEL", "deepseek-v4-flash", "User")
 
-# 2. 安装依赖
-pip install -e .
-
-# 3. 配置密钥
-Copy-Item .\local_secrets.py.example .\local_secrets.py
-# 编辑 local_secrets.py 填入 DEEPSEEK_API_KEY
-
-# 4. 验证模型连接
+# 验证连接
 python -m evisi_eval check-provider --provider deepseek
-
-# 5. 跑示例评测
-python -m evisi_eval run `
-  --samples data/example_samples.jsonl `
-  --outputs data/example_outputs.jsonl `
-  --provider deepseek `
-  --run-name example_run
+# ✅ 连接成功：provider=deepseek model=deepseek-v4-flash
 ```
 
-也可以使用根目录入口：
+> 也可复制 `local_secrets.py.example` 为 `local_secrets.py` 后填写（已被 `.gitignore` 忽略）。
+> 支持 `deepseek`、`openai`、`gemini`、`custom` 四种 provider。
 
-```powershell
-python run_evaluation.py --samples data/example_samples.jsonl --outputs data/example_outputs.jsonl --provider deepseek
+### 3. 运行评测
+
+```bash
+# 先校验输入格式
+python -m evisi_eval check-input \
+  --samples data/user_samples.jsonl \
+  --outputs data/user_system_outputs.jsonl
+
+# 运行 v0.7 流水线
+python -m evisi_eval run \
+  --samples data/user_samples.jsonl \
+  --outputs data/user_system_outputs.jsonl \
+  --provider deepseek \
+  --output-dir results \
+  --run-name my_run \
+  --limit-samples 1 --limit-outputs 1
 ```
+
+**断点续跑：** `--resume`（prompt、输入或模型哈希改变后需使用新的 `--run-name`）
 
 ## 输入格式
 
-源文样本 `data/example_samples.jsonl`（每个 `sample_id` 唯一）：
+**样本文件**（每行一个源文）：
 
 ```json
-{"sample_id": "s1", "transcript": "The treatment may reduce the risk by 30 percent.", "offline_translation": "这种治疗可能将风险降低百分之三十。", "src_lang": "en", "tgt_lang": "zh", "domain": "medical"}
+{"sample_id":"sample_001","source_text":"...","reference_translation":"...","src_lang":"en","tgt_lang":"zh","domain":"general"}
 ```
 
-系统输出 `data/example_outputs.jsonl`（每个 `(sample_id, system_name)` 唯一）：
+**系统输出文件**（每个系统一行）：
 
 ```json
-{"sample_id": "s1", "system_name": "system_a", "si_translation": "这种治疗可能将风险降低百分之三十。"}
+{"sample_id":"sample_001","system_name":"system_a","si_translation":"最终同传译文"}
 ```
 
-支持 `source_only`（无离线译文）和 `reference_assisted`（含离线译文）两种模式，两种模式使用同一套评测链路。
+- `transcript` / `offline_translation` 可分别作为 `source_text` / `reference_translation` 的兼容别名
+- `system_asr` 被忽略
+- 同一 `sample_id` 可对应多个系统输出
 
 ## 输出结构
 
-```text
-results/<run_name>/
-├── source_cards.jsonl       # 源文结构化卡片
-├── partial_results.jsonl    # 增量结果（断点续跑用）
-├── results.jsonl            # 最终评测结果
-├── failures.jsonl           # 失败记录
-├── metrics.json             # 聚合指标
-├── run_manifest.json        # 输入 + Prompt 哈希 + 模型版本
-└── report.html              # 可视化报告
+```
+results/<run-name>/
+├── joint/
+│   ├── source_00_input.jsonl
+│   ├── joint_cards_v07.jsonl              # 冻结联合卡
+│   └── stages/<sample_id>/                # 各阶段缓存 (Phase 1-8)
+├── target/
+│   ├── target_00_input.jsonl
+│   ├── si_cards_v07.jsonl                 # SI 匹配卡
+│   └── stages/<sample_id>/<system>/       # 各阶段缓存 (Phase 9-14)
+├── score/
+│   └── final_results_v07.jsonl            # 逐项诊断与确定性分数
+├── failures.jsonl                         # ⚠️ 先查这个
+├── metrics_v07.json
+└── run_manifest_v07.json                  # 完整哈希链（可复现）
 ```
 
-断点续跑会核对输入文件、Prompt、模型、评分权重和版本哈希，任一项变化都会拒绝复用旧结果。
+**检查顺序：** `failures.jsonl` → `score/final_results_v07.jsonl` → `metrics_v07.json`
 
-## 评分公式
+## 本地测试
 
-每个源项目按重要性（1 / 2 / 3）分配权重：
-
-```text
-item_budget    = dimension_weight × item_importance / Σ(dimension_item_importance)
-item_deduction = item_budget × verdict_coefficient
-dimension_score = dimension_weight - Σ(accepted_item_deduction)
-```
-
-Verdict 系数：
-
-| 维度 | verdict | 系数 |
-|---|---|---:|
-| Anchor | `exact` / `equivalent` | 0 |
-| Anchor | `incorrect` / `missing` | 1 |
-| Anchor | `ambiguous` | 0（进入复核队列）|
-| Event | `covered` / `compressed_covered` | 0 |
-| Event | `partially_covered` | 0.5 |
-| Event | `contradicted` / `missing` | 1 |
-| Relation | `preserved` | 0 |
-| Relation | `weakened` | 0.5 |
-| Relation | `reversed` / `missing` | 1 |
-
-**总分封顶**：关键事件被反译 → 55 上限；关键事件完全缺失 → 65 上限；关键锚点错误 → 65 上限；关键关系反转 → 60 上限；存在关键不可理解片段 → 60 上限。详见 [评分协议](docs/scoring_protocol.md)。
-
-## 模型配置
-
-支持 DeepSeek / OpenAI / Gemini / OpenAI-compatible 服务。配置可放在环境变量或 `local_secrets.py`（不提交到仓库）：
-
-```python
-EVISI_PRIMARY_PROVIDER = "deepseek"
-EVISI_REVIEW_PROVIDER = "deepseek"
-DEEPSEEK_API_KEY = "your-key"
-DEEPSEEK_MODEL = "deepseek-chat"
-DEEPSEEK_BASE_URL = "https://api.deepseek.com"
-```
-
-## 项目结构
-
-```text
-EviSI-Eval-Agent/
-├── data/                  # 示例输入与输出
-├── docs/                  # 架构、评分、数据契约、运行指南
-├── evisi_eval/            # 唯一正式实现
-├── prompts/               # 8 个版本化 Prompt 单一来源
-├── schemas/               # 4 个 JSON Schema
-├── tests/                 # 单元与端到端测试
-├── local_secrets.py.example
-├── run_evaluation.py      # 顶层入口
-├── run_agent.py           # LLM Agent 评测入口
-├── pyproject.toml
-├── README.md
-├── LICENSE
-└── CHANGELOG.md
-```
-
-## 文档导航
-
-- [系统架构](docs/architecture.md) — 设计原则、数据流、四阶段管线、扩展接口
-- [评分协议](docs/scoring_protocol.md) — 维度权重、verdict 系数、错误去重、复核门槛、总分封顶
-- [数据契约](docs/data_contract.md) — 样本输入、系统输出、Source Card、Target Analysis、Evaluation Result
-- [运行指南](docs/operation_guide.md) — 离线演示、模型配置、断点续跑、报告导出
-
-## 开发验证
-
-```powershell
+```bash
 python -m pytest -q
+# 使用 ScriptedLLMClient，无需 API Key
 ```
 
-## 当前边界
+## 协议演进
 
-- Source Card 已执行机器校验，但正式 benchmark 发布前仍建议人工冻结高重要性锚点和事件
-- LLM 判定具有模型方差，正式对比实验应固定模型、Prompt 哈希、温度和复核模型
-- 五维权重是当前协议值，后续需要使用人工标注集检验相关性并进行版本化校准
-- 当前版本不使用各系统自己的 ASR，不推断真实延迟、增量稳定性、修订率或闪烁率——这些指标需要音频、时间戳或增量输出，应作为独立的流式评测轨道接入
+```
+v0.3  ────▶  v0.5  ────▶  v0.6  ────▶  v0.7 (当前)
+早期抽取       双Agent复核     源条件投影      联合抽取 + 位置匹配
+```
 
-## 协议版本
+详见 [CHANGELOG.md](CHANGELOG.md)。
 
-当前协议版本：`evisi_eval_v0.4.1`
+## 当前限制与下一步
 
-所有 Prompt / Schema / 权重变更必须升级协议版本。变更记录见 [CHANGELOG.md](CHANGELOG.md)。
+| 状态 | 任务 |
+|:---:|:---|
+| ✅ 已完成 | Source+Reference 联合抽取、位置匹配与哈希溯源（v0.7.0） |
+| 🔄 进行中 | 人工标注集构建（数字、实体、否定、情态、关系、同传压缩） |
+| 📋 待做 | 双人标注与仲裁流程，项目级一致性（Krippendorff's α） |
+| 📋 待做 | 不同模型、Prompt 版本与多次运行的稳定性分析 |
+| 📋 待做 | Benchmark 版本固化、模型快照与发布报告 |
 
-## License
+## 文档
 
-[MIT](LICENSE)
+| 文档 | 说明 |
+|:---|:---|
+| [**v0.7 协议设计**](docs/v0.7_protocol_design.md) | 完整设计：14 阶段 / 信息隔离 / 确定性评分 / 约束清单（**推荐**） |
+| [v0.7 设计草稿](docs/v0.7_design/00_architecture.md) | v0.7 设计过程记录（已被 v0.7 协议设计取代） |
+| [架构文档](docs/architecture.md) | v0.5 架构（已过时，仅供历史参考） |
+| [数据契约](docs/data_contract.md) | 各 artifact 的 schema 与验证规则 |
+| [评分协议](docs/scoring_protocol.md) | 五维评分算法与 provisional 处理 |
+| [操作指南](docs/operation_guide.md) | 完整 CLI 手册与数据准备流程 |
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=caiqiezujian/EviSI-Eval&type=Date)](https://star-history.com/#caiqiezujian/EviSI-Eval&Date)
+
+---
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Made_With-Python_3.12+-4a90d9?style=for-the-badge&logo=python" alt="Python 3.12+">
+  <img src="https://img.shields.io/badge/AI_Provider-DeepSeek-0066ff?style=for-the-badge" alt="DeepSeek">
+  <img src="https://img.shields.io/badge/Protocol-evisi__eval__v0.7-00d4ff?style=for-the-badge" alt="Protocol v0.7">
+  <img src="https://img.shields.io/badge/License-MIT-00d4ff?style=for-the-badge" alt="MIT License">
+</p>
