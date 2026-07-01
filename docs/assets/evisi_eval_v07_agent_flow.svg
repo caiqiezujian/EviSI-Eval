@@ -1,0 +1,460 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1400" width="1920" height="1400" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0e27"/>
+      <stop offset="50%" stop-color="#0d1b3e"/>
+      <stop offset="100%" stop-color="#111a3a"/>
+    </linearGradient>
+    <linearGradient id="grad-source" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00d4ff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#0099cc" stop-opacity="0.85"/>
+    </linearGradient>
+    <linearGradient id="grad-ref" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff9a3c" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#e07a1c" stop-opacity="0.85"/>
+    </linearGradient>
+    <linearGradient id="grad-si" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4ade80" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#22c55e" stop-opacity="0.85"/>
+    </linearGradient>
+    <linearGradient id="grad-deliv" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a78bfa" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.85"/>
+    </linearGradient>
+    <linearGradient id="grad-joint" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00d4ff" stop-opacity="0.6"/>
+      <stop offset="50%" stop-color="#a78bfa" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#ff9a3c" stop-opacity="0.6"/>
+    </linearGradient>
+    <linearGradient id="grad-score" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ec4899" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#be185d" stop-opacity="0.95"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="soft-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="card-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
+      <feOffset dx="0" dy="2" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.4"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#00d4ff"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#ff9a3c"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#4ade80"/>
+    </marker>
+    <marker id="arrow-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#a78bfa"/>
+    </marker>
+  </defs>
+
+  <rect width="1920" height="1400" fill="url(#bg)"/>
+  <g stroke="#1e3a6e" stroke-width="0.5" opacity="0.2">
+    <line x1="0" y1="160" x2="1920" y2="160"/>
+    <line x1="0" y1="400" x2="1920" y2="400"/>
+    <line x1="0" y1="640" x2="1920" y2="640"/>
+    <line x1="0" y1="900" x2="1920" y2="900"/>
+    <line x1="0" y1="1160" x2="1920" y2="1160"/>
+  </g>
+  <circle cx="100" cy="1240" r="220" fill="none" stroke="#00d4ff" stroke-width="0.5" opacity="0.06"/>
+  <circle cx="1820" cy="80" r="180" fill="none" stroke="#ec4899" stroke-width="0.5" opacity="0.06"/>
+
+  <!-- TITLE -->
+  <g transform="translate(60, 50)">
+    <rect x="0" y="0" width="1800" height="76" rx="38" fill="url(#grad-joint)" opacity="0.18" stroke="#00d4ff" stroke-width="1.5" stroke-opacity="0.5"/>
+    <text x="40" y="48" font-size="30" font-weight="700" fill="#f8fafc" filter="url(#glow)">EviSI-Eval v0.7 — 14 LLM Agent Calls · Joint Card · Deterministic Scoring</text>
+  </g>
+
+  <!-- ROW 1: SOURCE -->
+  <g transform="translate(60, 160)">
+    <rect x="0" y="0" width="1800" height="220" rx="14" fill="#0d1b3e" fill-opacity="0.4" stroke="#00d4ff" stroke-width="1" stroke-opacity="0.25"/>
+    <g transform="translate(20, 22)">
+      <rect x="0" y="0" width="180" height="28" rx="6" fill="url(#grad-source)" filter="url(#glow)"/>
+      <text x="90" y="20" font-size="14" font-weight="700" fill="#0a0e27" text-anchor="middle">SOURCE  SIDE</text>
+    </g>
+    <text x="20" y="78" font-size="13" fill="#94a3b8">4 LLM calls per sample · Source-only · never sees any translation</text>
+
+    <g transform="translate(20, 104)">
+      <!-- Phase 1 -->
+      <g transform="translate(0, 0)">
+        <rect width="416" height="98" rx="10" fill="url(#grad-source)" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="56" height="98" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
+        <text x="28" y="42" font-size="22" font-weight="800" fill="#f8fafc" text-anchor="middle">1</text>
+        <text x="28" y="68" font-size="9" font-weight="700" fill="#00d4ff" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="76" y="36" font-size="16" font-weight="700" fill="#f8fafc">Source Segment</text>
+        <text x="76" y="58" font-size="11" fill="#cbd5e1">input  source_text</text>
+        <text x="76" y="76" font-size="11" fill="#cbd5e1">output  source_segments[]</text>
+      </g>
+      <g transform="translate(424, 46)">
+        <path d="M 0 6 L 18 6" stroke="#00d4ff" stroke-width="2.5" fill="none" marker-end="url(#arrow-blue)"/>
+      </g>
+      <!-- Phase 2 -->
+      <g transform="translate(450, 0)">
+        <rect width="416" height="98" rx="10" fill="url(#grad-source)" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="56" height="98" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
+        <text x="28" y="42" font-size="22" font-weight="800" fill="#f8fafc" text-anchor="middle">2</text>
+        <text x="28" y="68" font-size="9" font-weight="700" fill="#00d4ff" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="76" y="36" font-size="16" font-weight="700" fill="#f8fafc">Source Anchor</text>
+        <text x="76" y="58" font-size="11" fill="#cbd5e1">input  source_segments</text>
+        <text x="76" y="76" font-size="11" fill="#cbd5e1">output  source_anchors[]</text>
+      </g>
+      <g transform="translate(874, 46)">
+        <path d="M 0 6 L 18 6" stroke="#00d4ff" stroke-width="2.5" fill="none" marker-end="url(#arrow-blue)"/>
+      </g>
+      <!-- Phase 3 -->
+      <g transform="translate(900, 0)">
+        <rect width="416" height="98" rx="10" fill="url(#grad-source)" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="56" height="98" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
+        <text x="28" y="42" font-size="22" font-weight="800" fill="#f8fafc" text-anchor="middle">3</text>
+        <text x="28" y="68" font-size="9" font-weight="700" fill="#00d4ff" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="76" y="36" font-size="16" font-weight="700" fill="#f8fafc">Source Event</text>
+        <text x="76" y="58" font-size="11" fill="#cbd5e1">input  source_segments</text>
+        <text x="76" y="76" font-size="11" fill="#cbd5e1">output  source_events[]</text>
+      </g>
+      <g transform="translate(1324, 46)">
+        <path d="M 0 6 L 18 6" stroke="#00d4ff" stroke-width="2.5" fill="none" marker-end="url(#arrow-blue)"/>
+      </g>
+      <!-- Phase 4 -->
+      <g transform="translate(1350, 0)">
+        <rect width="416" height="98" rx="10" fill="url(#grad-source)" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="56" height="98" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
+        <text x="28" y="42" font-size="22" font-weight="800" fill="#f8fafc" text-anchor="middle">4</text>
+        <text x="28" y="68" font-size="9" font-weight="700" fill="#00d4ff" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="76" y="36" font-size="16" font-weight="700" fill="#f8fafc">Source Relation</text>
+        <text x="76" y="58" font-size="11" fill="#cbd5e1">input  source_events</text>
+        <text x="76" y="76" font-size="11" fill="#cbd5e1">output  source_relations[]</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ROW 2: REFERENCE -->
+  <g transform="translate(60, 408)">
+    <rect x="0" y="0" width="1800" height="220" rx="14" fill="#0d1b3e" fill-opacity="0.4" stroke="#ff9a3c" stroke-width="1" stroke-opacity="0.25"/>
+    <g transform="translate(20, 22)">
+      <rect x="0" y="0" width="180" height="28" rx="6" fill="url(#grad-ref)" filter="url(#glow)"/>
+      <text x="90" y="20" font-size="14" font-weight="700" fill="#0a0e27" text-anchor="middle">REFERENCE  SIDE</text>
+    </g>
+    <text x="20" y="78" font-size="13" fill="#94a3b8">4 LLM calls per sample · sees source_card + reference · <tspan font-weight="700" fill="#ff9a3c">auxiliary, NOT gold standard</tspan></text>
+
+    <g transform="translate(20, 104)">
+      <!-- Phase 5 -->
+      <g transform="translate(0, 0)">
+        <rect width="416" height="98" rx="10" fill="url(#grad-ref)" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="56" height="98" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
+        <text x="28" y="42" font-size="22" font-weight="800" fill="#f8fafc" text-anchor="middle">5</text>
+        <text x="28" y="68" font-size="9" font-weight="700" fill="#ff9a3c" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="76" y="36" font-size="16" font-weight="700" fill="#f8fafc">Reference Align</text>
+        <text x="76" y="58" font-size="11" fill="#fff7ed">input  ref_text + source_segs</text>
+        <text x="76" y="76" font-size="11" fill="#fff7ed">output  reference_segments[]</text>
+      </g>
+      <g transform="translate(424, 46)">
+        <path d="M 0 6 L 18 6" stroke="#ff9a3c" stroke-width="2.5" fill="none" marker-end="url(#arrow-orange)"/>
+      </g>
+      <!-- Phase 6 -->
+      <g transform="translate(450, 0)">
+        <rect width="416" height="98" rx="10" fill="url(#grad-ref)" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="56" height="98" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
+        <text x="28" y="42" font-size="22" font-weight="800" fill="#f8fafc" text-anchor="middle">6</text>
+        <text x="28" y="68" font-size="9" font-weight="700" fill="#ff9a3c" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="76" y="36" font-size="16" font-weight="700" fill="#f8fafc">Reference Anchor</text>
+        <text x="76" y="58" font-size="11" fill="#fff7ed">input  source_anchors + ref</text>
+        <text x="76" y="76" font-size="11" fill="#fff7ed">output  reference_anchors[]</text>
+      </g>
+      <g transform="translate(874, 46)">
+        <path d="M 0 6 L 18 6" stroke="#ff9a3c" stroke-width="2.5" fill="none" marker-end="url(#arrow-orange)"/>
+      </g>
+      <!-- Phase 7 -->
+      <g transform="translate(900, 0)">
+        <rect width="416" height="98" rx="10" fill="url(#grad-ref)" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="56" height="98" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
+        <text x="28" y="42" font-size="22" font-weight="800" fill="#f8fafc" text-anchor="middle">7</text>
+        <text x="28" y="68" font-size="9" font-weight="700" fill="#ff9a3c" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="76" y="36" font-size="16" font-weight="700" fill="#f8fafc">Reference Event</text>
+        <text x="76" y="58" font-size="11" fill="#fff7ed">input  source_events + ref</text>
+        <text x="76" y="76" font-size="11" fill="#fff7ed">output  reference_events[]</text>
+      </g>
+      <g transform="translate(1324, 46)">
+        <path d="M 0 6 L 18 6" stroke="#ff9a3c" stroke-width="2.5" fill="none" marker-end="url(#arrow-orange)"/>
+      </g>
+      <!-- Phase 8 -->
+      <g transform="translate(1350, 0)">
+        <rect width="416" height="98" rx="10" fill="url(#grad-ref)" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="56" height="98" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
+        <text x="28" y="42" font-size="22" font-weight="800" fill="#f8fafc" text-anchor="middle">8</text>
+        <text x="28" y="68" font-size="9" font-weight="700" fill="#ff9a3c" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="76" y="36" font-size="16" font-weight="700" fill="#f8fafc">Reference Relation</text>
+        <text x="76" y="58" font-size="11" fill="#fff7ed">input  source_relations + ref</text>
+        <text x="76" y="76" font-size="11" fill="#fff7ed">output  reference_relations[]</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Connector arrow down to Joint Card -->
+  <g transform="translate(950, 628)">
+    <path d="M 0 0 L 0 28" stroke="#00d4ff" stroke-width="2.5" fill="none" marker-end="url(#arrow-blue)" opacity="0.6"/>
+  </g>
+
+  <!-- JOINT CARD -->
+  <g transform="translate(60, 660)">
+    <rect x="0" y="0" width="1800" height="130" rx="16" fill="url(#grad-joint)" fill-opacity="0.15" stroke="url(#grad-joint)" stroke-width="2" filter="url(#card-shadow)"/>
+    <text x="40" y="44" font-size="22" font-weight="800" fill="#f8fafc" filter="url(#glow)">Joint Card  (frozen, SHA-256 hash)</text>
+    <text x="40" y="72" font-size="13" fill="#cbd5e1">Python positional zip of source + reference arrays · shared by every SI system · <tspan font-weight="700" fill="#00d4ff">once per sample, 8 LLM calls total</tspan></text>
+    <text x="40" y="106" font-size="12" font-family="Menlo, Consolas, monospace" fill="#64748b">artifact_hash(artifact) = sha256( json.dumps({k:v for k,v in artifact.items() if k!="metadata"}, sort_keys=True) )</text>
+    <g transform="translate(1700, 32)">
+      <rect x="0" y="20" width="60" height="50" rx="6" fill="#0a0e27" stroke="#00d4ff" stroke-width="2"/>
+      <path d="M 12 20 L 12 12 a 18 18 0 0 1 36 0 L 48 20" stroke="#00d4ff" stroke-width="2.5" fill="none"/>
+      <circle cx="30" cy="42" r="5" fill="#00d4ff"/>
+      <rect x="28" y="42" width="4" height="14" fill="#00d4ff"/>
+    </g>
+  </g>
+
+  <!-- Connector arrow down to SI row -->
+  <g transform="translate(950, 790)">
+    <path d="M 0 0 L 0 28" stroke="#4ade80" stroke-width="2.5" fill="none" marker-end="url(#arrow-green)" opacity="0.6"/>
+  </g>
+
+  <!-- ROW 3: SI MATCHING -->
+  <g transform="translate(60, 822)">
+    <rect x="0" y="0" width="1800" height="180" rx="14" fill="#0d1b3e" fill-opacity="0.4" stroke="#4ade80" stroke-width="1" stroke-opacity="0.25"/>
+    <g transform="translate(20, 22)">
+      <rect x="0" y="0" width="180" height="28" rx="6" fill="url(#grad-si)" filter="url(#glow)"/>
+      <text x="90" y="20" font-size="14" font-weight="700" fill="#0a0e27" text-anchor="middle">SI  MATCHING</text>
+    </g>
+    <text x="20" y="78" font-size="13" fill="#94a3b8">6 LLM calls per system · sees Joint Card + si_translation · positional 1-to-1 with source items</text>
+
+    <g transform="translate(20, 96)">
+      <!-- Phase 9 -->
+      <g transform="translate(0, 0)">
+        <rect width="266" height="72" rx="10" fill="url(#grad-si)" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="46" height="72" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
+        <text x="23" y="32" font-size="17" font-weight="800" fill="#f8fafc" text-anchor="middle">9</text>
+        <text x="23" y="56" font-size="8" font-weight="700" fill="#4ade80" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="60" y="28" font-size="14" font-weight="700" fill="#f8fafc">SI Align</text>
+        <text x="60" y="48" font-size="10" fill="#f0fdf4">si_segments[]</text>
+        <text x="60" y="62" font-size="10" fill="#f0fdf4">(lossless split)</text>
+      </g>
+      <g transform="translate(272, 30)">
+        <path d="M 0 6 L 14 6" stroke="#4ade80" stroke-width="2" fill="none" marker-end="url(#arrow-green)"/>
+      </g>
+      <!-- Phase 10 -->
+      <g transform="translate(294, 0)">
+        <rect width="266" height="72" rx="10" fill="url(#grad-si)" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="46" height="72" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
+        <text x="23" y="32" font-size="17" font-weight="800" fill="#f8fafc" text-anchor="middle">10</text>
+        <text x="23" y="56" font-size="8" font-weight="700" fill="#4ade80" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="60" y="28" font-size="14" font-weight="700" fill="#f8fafc">SI Anchor Match</text>
+        <text x="60" y="48" font-size="10" fill="#f0fdf4">match = equiv/partial/</text>
+        <text x="60" y="62" font-size="10" fill="#f0fdf4">contradiction/missing</text>
+      </g>
+      <g transform="translate(566, 30)">
+        <path d="M 0 6 L 14 6" stroke="#4ade80" stroke-width="2" fill="none" marker-end="url(#arrow-green)"/>
+      </g>
+      <!-- Phase 11 -->
+      <g transform="translate(588, 0)">
+        <rect width="266" height="72" rx="10" fill="url(#grad-si)" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="46" height="72" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
+        <text x="23" y="32" font-size="17" font-weight="800" fill="#f8fafc" text-anchor="middle">11</text>
+        <text x="23" y="56" font-size="8" font-weight="700" fill="#4ade80" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="60" y="28" font-size="14" font-weight="700" fill="#f8fafc">SI Event Match</text>
+        <text x="60" y="48" font-size="10" fill="#f0fdf4">proposition kept /</text>
+        <text x="60" y="62" font-size="10" fill="#f0fdf4">weakened / flipped</text>
+      </g>
+      <g transform="translate(860, 30)">
+        <path d="M 0 6 L 14 6" stroke="#4ade80" stroke-width="2" fill="none" marker-end="url(#arrow-green)"/>
+      </g>
+      <!-- Phase 12 -->
+      <g transform="translate(882, 0)">
+        <rect width="266" height="72" rx="10" fill="url(#grad-si)" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="46" height="72" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
+        <text x="23" y="32" font-size="17" font-weight="800" fill="#f8fafc" text-anchor="middle">12</text>
+        <text x="23" y="56" font-size="8" font-weight="700" fill="#4ade80" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="60" y="28" font-size="14" font-weight="700" fill="#f8fafc">SI Relation Match</text>
+        <text x="60" y="48" font-size="10" fill="#f0fdf4">incl. not_scored</text>
+        <text x="60" y="62" font-size="10" fill="#f0fdf4">when endpoints missing</text>
+      </g>
+      <g transform="translate(1154, 30)">
+        <path d="M 0 6 L 14 6" stroke="#a78bfa" stroke-width="2" fill="none" marker-end="url(#arrow-purple)"/>
+      </g>
+      <!-- Phase 13 -->
+      <g transform="translate(1176, 0)">
+        <rect width="266" height="72" rx="10" fill="url(#grad-deliv)" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="46" height="72" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
+        <text x="23" y="32" font-size="17" font-weight="800" fill="#f8fafc" text-anchor="middle">13</text>
+        <text x="23" y="56" font-size="8" font-weight="700" fill="#a78bfa" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="60" y="28" font-size="14" font-weight="700" fill="#f8fafc">Fluency</text>
+        <text x="60" y="48" font-size="10" fill="#f5f3ff">si_text only · </text>
+        <text x="60" y="62" font-size="10" fill="#f5f3ff">no source visible</text>
+      </g>
+      <g transform="translate(1448, 30)">
+        <path d="M 0 6 L 14 6" stroke="#a78bfa" stroke-width="2" fill="none" marker-end="url(#arrow-purple)"/>
+      </g>
+      <!-- Phase 14 -->
+      <g transform="translate(1470, 0)">
+        <rect width="266" height="72" rx="10" fill="url(#grad-deliv)" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="46" height="72" rx="10" fill="#0a0e27" fill-opacity="0.45"/>
+        <text x="23" y="32" font-size="17" font-weight="800" fill="#f8fafc" text-anchor="middle">14</text>
+        <text x="23" y="56" font-size="8" font-weight="700" fill="#a78bfa" text-anchor="middle" letter-spacing="1">PHASE</text>
+        <text x="60" y="28" font-size="14" font-weight="700" fill="#f8fafc">SI Expression</text>
+        <text x="60" y="48" font-size="10" fill="#f5f3ff">source + si · </text>
+        <text x="60" y="62" font-size="10" fill="#f5f3ff">redundancy, lag</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- DETERMINISTIC SCORING (LEFT) -->
+  <g transform="translate(60, 1030)">
+    <rect x="0" y="0" width="1140" height="270" rx="14" fill="#0d1b3e" fill-opacity="0.5" stroke="#ec4899" stroke-width="1" stroke-opacity="0.3"/>
+    <g transform="translate(20, 22)">
+      <rect x="0" y="0" width="240" height="28" rx="6" fill="url(#grad-score)" filter="url(#glow)"/>
+      <text x="120" y="20" font-size="14" font-weight="700" fill="#f8fafc" text-anchor="middle">DETERMINISTIC  SCORING</text>
+    </g>
+    <text x="20" y="76" font-size="13" fill="#94a3b8">calculate_v07_scores() · Python · zero LLM · importance-weighted · relation endpoint blocking</text>
+
+    <g transform="translate(20, 96)">
+      <rect width="1100" height="40" rx="8" fill="#0a0e27" fill-opacity="0.5" stroke="#ec4899" stroke-opacity="0.3"/>
+      <text x="20" y="26" font-size="13" font-family="Menlo, Consolas, monospace" fill="#f8fafc">dimension = 100 × Σ(importance_i × score_i) / Σ(importance_i)</text>
+      <text x="900" y="26" font-size="12" font-family="Menlo, Consolas, monospace" fill="#cbd5e1">score_i ∈ {1.0, 0.5, 0.0}</text>
+    </g>
+
+    <!-- 5 weight bars in 2 rows -->
+    <!-- Row 1: Anchor / Event / Relation -->
+    <g transform="translate(20, 152)">
+      <g transform="translate(0, 0)">
+        <text x="0" y="14" font-size="12" font-weight="700" fill="#f8fafc">Anchor</text>
+        <text x="0" y="34" font-size="22" font-weight="800" fill="#00d4ff" filter="url(#glow)">85.71</text>
+        <text x="0" y="50" font-size="10" font-weight="600" fill="#94a3b8">35% weight</text>
+        <rect x="100" y="6" width="220" height="22" rx="11" fill="#0a0e27" stroke="#00d4ff" stroke-opacity="0.3"/>
+        <rect x="100" y="6" width="189" height="22" rx="11" fill="url(#grad-source)"/>
+        <text x="100" y="50" font-size="10" font-family="Menlo, Consolas, monospace" fill="#64748b">12/14 · imp 24/29</text>
+      </g>
+      <g transform="translate(380, 0)">
+        <text x="0" y="14" font-size="12" font-weight="700" fill="#f8fafc">Event</text>
+        <text x="0" y="34" font-size="22" font-weight="800" fill="#ff9a3c" filter="url(#glow)">92.00</text>
+        <text x="0" y="50" font-size="10" font-weight="600" fill="#94a3b8">35% weight</text>
+        <rect x="100" y="6" width="220" height="22" rx="11" fill="#0a0e27" stroke="#ff9a3c" stroke-opacity="0.3"/>
+        <rect x="100" y="6" width="202" height="22" rx="11" fill="url(#grad-ref)"/>
+        <text x="100" y="50" font-size="10" font-family="Menlo, Consolas, monospace" fill="#64748b">11/13 · imp 23/25</text>
+      </g>
+      <g transform="translate(760, 0)">
+        <text x="0" y="14" font-size="12" font-weight="700" fill="#f8fafc">Relation</text>
+        <text x="0" y="34" font-size="22" font-weight="800" fill="#4ade80" filter="url(#glow)">100.00</text>
+        <text x="0" y="50" font-size="10" font-weight="600" fill="#94a3b8">10% weight</text>
+        <rect x="100" y="6" width="220" height="22" rx="11" fill="#0a0e27" stroke="#4ade80" stroke-opacity="0.3"/>
+        <rect x="100" y="6" width="220" height="22" rx="11" fill="url(#grad-si)"/>
+        <text x="100" y="50" font-size="10" font-family="Menlo, Consolas, monospace" fill="#64748b">2/2 · imp 4/4</text>
+      </g>
+    </g>
+
+    <!-- Row 2: Fluency / Expression -->
+    <g transform="translate(20, 218)">
+      <g transform="translate(0, 0)">
+        <text x="0" y="14" font-size="12" font-weight="700" fill="#f8fafc">Fluency</text>
+        <text x="0" y="34" font-size="22" font-weight="800" fill="#a78bfa" filter="url(#glow)">98.00</text>
+        <text x="0" y="50" font-size="10" font-weight="600" fill="#94a3b8">12% weight</text>
+        <rect x="100" y="6" width="220" height="22" rx="11" fill="#0a0e27" stroke="#a78bfa" stroke-opacity="0.3"/>
+        <rect x="100" y="6" width="216" height="22" rx="11" fill="url(#grad-deliv)"/>
+        <text x="100" y="50" font-size="10" font-family="Menlo, Consolas, monospace" fill="#64748b">1 minor · -2</text>
+      </g>
+      <g transform="translate(380, 0)">
+        <text x="0" y="14" font-size="12" font-weight="700" fill="#f8fafc">Expression</text>
+        <text x="0" y="34" font-size="22" font-weight="800" fill="#ec4899" filter="url(#glow)">100.00</text>
+        <text x="0" y="50" font-size="10" font-weight="600" fill="#94a3b8">8% weight</text>
+        <rect x="100" y="6" width="220" height="22" rx="11" fill="#0a0e27" stroke="#ec4899" stroke-opacity="0.3"/>
+        <rect x="100" y="6" width="220" height="22" rx="11" fill="url(#grad-score)"/>
+        <text x="100" y="50" font-size="10" font-family="Menlo, Consolas, monospace" fill="#64748b">0 issues</text>
+      </g>
+      <g transform="translate(760, 0)">
+        <text x="0" y="14" font-size="11" font-weight="700" fill="#cbd5e1">Weighted sum</text>
+        <text x="0" y="34" font-size="14" font-family="Menlo, Consolas, monospace" fill="#cbd5e1">.8571·35 + .92·35</text>
+        <text x="0" y="50" font-size="11" font-family="Menlo, Consolas, monospace" fill="#64748b">+ 1.0·10 + .98·12 + 1.0·8</text>
+        <text x="0" y="62" font-size="11" font-family="Menlo, Consolas, monospace" fill="#64748b">= 92.16 / 100</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- SAMPLE ITEM TRACE (RIGHT) -->
+  <g transform="translate(1220, 1030)">
+    <rect x="0" y="0" width="640" height="270" rx="14" fill="#0d1b3e" fill-opacity="0.5" stroke="#ec4899" stroke-width="1" stroke-opacity="0.3"/>
+    <g transform="translate(20, 22)">
+      <rect x="0" y="0" width="220" height="28" rx="6" fill="url(#grad-score)" filter="url(#glow)"/>
+      <text x="110" y="20" font-size="14" font-weight="700" fill="#f8fafc" text-anchor="middle">SAMPLE  ITEM  TRACE</text>
+    </g>
+    <text x="20" y="76" font-size="13" fill="#94a3b8">How a single Anchor contributes to the final score</text>
+
+    <g transform="translate(20, 96)">
+      <rect width="600" height="158" rx="10" fill="#0a0e27" fill-opacity="0.6" stroke="#00d4ff" stroke-opacity="0.3"/>
+      <g transform="translate(16, 16)">
+        <rect width="62" height="22" rx="4" fill="url(#grad-source)"/>
+        <text x="31" y="16" font-size="11" font-weight="800" fill="#0a0e27" text-anchor="middle">S3_A2</text>
+        <rect x="70" y="0" width="54" height="22" rx="4" fill="#0a0e27" stroke="#ff9a3c" stroke-opacity="0.6"/>
+        <text x="97" y="16" font-size="11" font-weight="700" fill="#ff9a3c" text-anchor="middle">entity</text>
+        <rect x="132" y="0" width="44" height="22" rx="4" fill="#0a0e27" stroke="#a78bfa" stroke-opacity="0.6"/>
+        <text x="154" y="16" font-size="11" font-weight="700" fill="#a78bfa" text-anchor="middle">imp 3</text>
+        <text x="190" y="16" font-size="13" font-weight="700" fill="#f8fafc">Dr. Li</text>
+      </g>
+      <g transform="translate(16, 50)">
+        <text x="0" y="0" font-size="9" font-weight="700" fill="#64748b" letter-spacing="1">SOURCE  EVIDENCE</text>
+        <text x="0" y="16" font-size="12" font-family="Menlo, Consolas, monospace" fill="#00d4ff">"...announced by Dr. Li, the lead..."</text>
+        <text x="0" y="38" font-size="9" font-weight="700" fill="#64748b" letter-spacing="1">SI  EVIDENCE</text>
+        <text x="0" y="54" font-size="12" font-family="Menlo, Consolas, monospace" fill="#4ade80">"...by Dr. Li..."</text>
+      </g>
+      <g transform="translate(420, 50)">
+        <rect width="160" height="64" rx="8" fill="url(#grad-score)" filter="url(#glow)"/>
+        <text x="80" y="22" font-size="10" font-weight="700" fill="#f8fafc" text-anchor="middle" letter-spacing="1">PHASE 10 MATCH</text>
+        <text x="80" y="44" font-size="20" font-weight="800" fill="#f8fafc" text-anchor="middle">equivalent</text>
+        <text x="80" y="58" font-size="10" fill="#fce7f3" text-anchor="middle">score_i = 1.0</text>
+      </g>
+      <g transform="translate(16, 124)">
+        <text x="0" y="0" font-size="11" font-weight="600" fill="#cbd5e1">Contribution:</text>
+        <text x="100" y="0" font-size="12" font-family="Menlo, Consolas, monospace" fill="#ec4899">imp 3 × 1.0 = 3.0 / 3</text>
+        <text x="290" y="0" font-size="11" fill="#94a3b8">+3.0 → anchor_fidelity numerator</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- FOOTER -->
+  <g transform="translate(60, 1350)">
+    <g transform="translate(0, 0)">
+      <circle cx="10" cy="-4" r="8" fill="url(#grad-source)"/>
+      <text x="28" y="0" font-size="12" fill="#cbd5e1">Source agents (4/sample)</text>
+    </g>
+    <g transform="translate(220, 0)">
+      <circle cx="10" cy="-4" r="8" fill="url(#grad-ref)"/>
+      <text x="28" y="0" font-size="12" fill="#cbd5e1">Reference agents (4/sample, auxiliary)</text>
+    </g>
+    <g transform="translate(540, 0)">
+      <circle cx="10" cy="-4" r="8" fill="url(#grad-si)"/>
+      <text x="28" y="0" font-size="12" fill="#cbd5e1">SI matching agents (4/system)</text>
+    </g>
+    <g transform="translate(820, 0)">
+      <circle cx="10" cy="-4" r="8" fill="url(#grad-deliv)"/>
+      <text x="28" y="0" font-size="12" fill="#cbd5e1">Delivery agents (2/system)</text>
+    </g>
+    <g transform="translate(1080, 0)">
+      <circle cx="10" cy="-4" r="8" fill="url(#grad-score)"/>
+      <text x="28" y="0" font-size="12" fill="#cbd5e1">Deterministic scoring (Python, zero LLM)</text>
+    </g>
+    <text x="1480" y="0" font-size="11" fill="#64748b">8 LLM/sample + 6 LLM/system · deterministic · reproducible</text>
+  </g>
+</svg>

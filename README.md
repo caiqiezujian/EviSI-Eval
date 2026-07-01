@@ -19,6 +19,16 @@
   <sub><b>上段</b>：Source + Reference 联合抽取（8 LLM calls / sample，Joint Card SHA-256 冻结） · <b>中段</b>：每 SI 系统的位置匹配（6 LLM calls / system） · <b>下段</b>：确定性五维评分（Anchor 35% · Event 35% · Relation 10% · Fluency 12% · SI Expression 8%）</sub>
 </p>
 
+### 14 LLM Agent 详细调用链 + 评分计算全景
+
+<p align="center">
+  <img src="docs/assets/evisi_eval_v07_agent_flow.svg" alt="EviSI-Eval v0.7 — 14 LLM Agent Calls · Joint Card · Deterministic Scoring" style="width:100%; border-radius: 14px; box-shadow: 0 6px 32px rgba(236, 72, 153, 0.18); margin: 1rem 0 0.5rem 0;">
+</p>
+
+<p align="center">
+  <sub>每张卡 = 一次 LLM 调用（带 input/output schema） · Joint Card 冻结后所有 SI 系统共享 · 评分完全 Python 端确定性计算 · 右侧 Sample Item Trace 展示一个 Anchor 的 match 判定如何贡献到最终分数</sub>
+</p>
+
 ---
 
 ## 评估范围
