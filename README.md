@@ -11,24 +11,19 @@
 [![GitHub stars](https://img.shields.io/github/stars/caiqiezujian/EviSI-Eval?style=flat-square&logo=github&color=00d4ff)](https://github.com/caiqiezujian/EviSI-Eval/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/caiqiezujian/EviSI-Eval?style=flat-square&logo=github&color=4a90d9)](https://github.com/caiqiezujian/EviSI-Eval/network/members)
 
-<picture>
-  <source srcset="docs/assets/hero-banner.svg" type="image/svg+xml">
-  <img src="docs/assets/hero-banner.svg" alt="EviSI-Eval Agent Architecture Banner" style="width:100%; border-radius: 12px; margin-bottom: 2rem;">
-</picture>
+<p align="center">
+  <img src="docs/assets/evisi_eval_v07_architecture_v2.png" alt="EviSI-Eval v0.7 Pipeline" style="width:100%; border-radius: 14px; box-shadow: 0 6px 32px rgba(0, 212, 255, 0.20); margin: 1.5rem 0 0.5rem 0;">
+</p>
+
+<p align="center">
+  <sub><b>上段</b>：Source + Reference 联合抽取（8 LLM calls / sample，Joint Card SHA-256 冻结） · <b>中段</b>：每 SI 系统的位置匹配（6 LLM calls / system） · <b>下段</b>：确定性五维评分（Anchor 35% · Event 35% · Relation 10% · Fluency 12% · SI Expression 8%）</sub>
+</p>
 
 ---
 
 ## 评估范围
 
 本项目评估**源语转录对应的最终同传文本**质量。不评估音频质量、ASR、首词延迟、平均滞后、增量字幕稳定性或语音播报质量。
-
-## v0.7 流水线一览
-
-<p align="center">
-  <img src="docs/assets/evisi_eval_v07_architecture_v2.png" alt="EviSI-Eval v0.7 Pipeline" style="width:100%; border-radius: 12px; box-shadow: 0 4px 24px rgba(0, 212, 255, 0.15); margin: 1rem 0;">
-</p>
-
-> **上图中**：上段 8 次 LLM 调用为 Source + Reference **联合抽取**（每 sample 一次），中段 6 次 LLM 调用为每个 SI 系统的**位置匹配**，下段 5 个粉色计分条为**确定性评分**的五维权重（Anchor 35% · Event 35% · Relation 10% · Fluency 12% · SI Expression 8%）。
 
 ## v0.7 核心思想
 
