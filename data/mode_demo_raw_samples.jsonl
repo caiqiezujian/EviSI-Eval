@@ -1,3 +1,0 @@
-{"sample_id":"mode_ref_001","transcript":"I go to work.","offline_translation":"我去上班。","domain":"daily","src_lang":"en","tgt_lang":"zh","mode_note":"reference_assisted: transcript + offline translation + SI output"}
-{"sample_id":"mode_src_001","transcript":"我去上班。","domain":"daily","src_lang":"zh","tgt_lang":"zh","mode_note":"source_only: transcript + SI output, no offline label"}
-

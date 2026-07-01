@@ -1,6 +1,0 @@
-{"sample_id":"mode_ref_001","system_name":"sys_a_good","si_translation":"我去上班。","expected_label":"good","expected_errors":[],"label_notes":"带离线译文参考，命题完整覆盖。"}
-{"sample_id":"mode_ref_001","system_name":"sys_b_wrong_action","si_translation":"我去打球。","expected_label":"proposition_error","expected_errors":["wrong_action"],"label_notes":"同一主语和去，但 action 从上班变成打球。"}
-{"sample_id":"mode_ref_001","system_name":"sys_c_partial","si_translation":"我要去。","expected_label":"partial_proposition","expected_errors":["missing_action"],"label_notes":"缺少上班这个核心动作。"}
-{"sample_id":"mode_src_001","system_name":"sys_a_good","si_translation":"我去上班。","expected_label":"good","expected_errors":[],"label_notes":"无离线译文，但同为中文，可用 source-only 保守规则判断。"}
-{"sample_id":"mode_src_001","system_name":"sys_b_wrong_action","si_translation":"我去打球。","expected_label":"proposition_error","expected_errors":["wrong_action"],"label_notes":"无实体数字，但命题层能发现动作不一致。"}
-{"sample_id":"mode_src_001","system_name":"sys_c_partial","si_translation":"我要去。","expected_label":"partial_proposition","expected_errors":["missing_action"],"label_notes":"动作缺失，属于命题覆盖不足。"}

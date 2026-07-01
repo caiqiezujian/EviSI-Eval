@@ -1,3 +1,4 @@
+# Byte-compiled
 __pycache__/
 *.pyc
 .pytest_cache/
@@ -6,11 +7,9 @@ __pycache__/
 .env
 .env.local
 local_secrets.py
-data/cards.jsonl
-data/eval_results.jsonl
-data/labeled_cards.jsonl
-data/labeled_eval_results.jsonl
-data/user_*.jsonl
-reports/*.html
-reports/*.csv
+
+# Data & results — never commit
+data/
 results/
+reports/
+tmp/
