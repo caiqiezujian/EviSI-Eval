@@ -13,3 +13,19 @@ data/
 results/
 reports/
 tmp/
+
+# Package build artefacts
+*.egg-info/
+*.egg-info
+build/
+dist/
+
+# Developer scratch files (debug helpers, ad-hoc extracts)
+extract_*.json
+inspect_*.py
+scratch_*.py
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/

@@ -42,7 +42,7 @@ def prepare_dataset(samples_path: str, outputs_path: str, output_dir: str) -> di
     }
     write_json(root / "dataset_manifest.json", manifest)
     (root / "README.md").write_text(
-        "# EviSI-Eval v0.5 标准化测试数据\n\n"
+        "# EviSI-Eval v0.7 标准化测试数据\n\n"
         "- `source_00_input.jsonl`：全部源文，每个 sample 只出现一次。\n"
         "- `target_00_input.jsonl`：全部同传最终译文。\n"
         "- `samples/<sample_id>/`：按样本拆分，便于人工查看。\n"

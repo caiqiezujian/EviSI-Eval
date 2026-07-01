@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.6.2] - 2026-07-01
+
+- Source Event 改为按 Source Segment 独立抽取，解决整样本 Event 请求持续空响应的问题。
+- Event 新增 `coverage_units`，强制解释每段原文属于 Event、允许省略或不可恢复残句，防止空数组静默漏抽。
+- Source、Reference 和 SI Projection 增加逐子阶段缓存，恢复运行只重试未完成阶段。
+- Projection Agent 按 Anchor/Event/Relation 发送最小必要 Source/Reference 视图，减少重复上下文。
+- Agent trace 增加真实调用耗时；结构修复恢复为最多两次；畸形 JSON 自动重试一次。
+- 默认最大输出从 32768 调整为 16384，并将运行参数纳入 manifest 兼容校验。
+- 模型生成且未人工核验的 Source Card 只产生 provisional 分数，不再把覆盖不完整的结果标记为 final。
+- CLI 在存在 pipeline failure 时返回非零退出码。
+
+## [0.6.1] - 2026-06-30
+
+- 新增零 LLM 调用的 Evaluation Context Card，显式绑定 Source/Reference hash 与逐项 ID 映射。
+- SI Card 和最终结果增加 `reference_card_hash`、`evaluation_context_hash`，断点恢复校验完整输入溯源。
+- Anchor Projection 禁止修改冻结 source component，强化目标值、逐字证据和 omission 约束。
+- Event 的 arguments、五类 operators 和 target event structure 改为严格结构校验。
+- 评分诊断增加逐 Source item 的权重、状态、贡献及 Anchor/Event 子状态，不引入未校准经验分值。
+- 修复 Relation 全部被 Event 端点阻断时错误导致整份样本无最终分数的问题。
+- 清除 Prompt 中来自测试数据的特征案例，改用独立合成案例，并新增 Prompt/Benchmark 隔离测试。
+- 增加 `check-v06-input`，可离线确认现有 `transcript/offline_translation` 数据是否可直接运行。
+- 删除失效的共享 Prompt 钩子、旧 PowerShell 运行脚本、临时调试文件和 6 月 29 日前的生成输出。
+
 ## [0.6.0] - 2026-06-30
 
 - Source 拆分为 Segment、Anchor、Event、Relation 四个聚焦 Agent，并冻结为唯一事实义务卡。

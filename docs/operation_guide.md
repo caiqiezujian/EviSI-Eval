@@ -41,48 +41,31 @@ python -m pytest -q
 python -m evisi_eval check-provider --provider deepseek
 ```
 
-## 3. 转换宽表数据
+## 3. 校验现有输入
 
-```powershell
-python -m evisi_eval import-data `
-  --input data\user_samples.jsonl `
-  --samples-output data\prepared\samples.jsonl `
-  --outputs-output data\prepared\outputs.jsonl
+```bash
+python -m evisi_eval check-v06-input --samples data/user_samples.jsonl --outputs data/user_two_files_si_only_outputs.jsonl
 ```
 
-如果文件已经符合 README 中的两份长表 JSONL 契约，可以跳过此步。
+该命令只做字段归一化和一致性检查，不调用模型。现有 `transcript/offline_translation` 会自动映射为 `source_text/reference_translation`，`system_asr` 被忽略。
 
 ## 4. 先跑一个样本
 
-直接运行准备好的脚本：
-
-```powershell
-.\scripts\run_smoke_deepseek.ps1
-```
-
-或运行等价命令：
-
-```powershell
-python -m evisi_eval run `
-  --samples data\user_samples_v05\smoke\source_00_input.jsonl `
-  --outputs data\user_samples_v05\smoke\target_00_input.jsonl `
-  --provider deepseek `
-  --run-name smoke_v05 `
-  --output-dir results
+```bash
+python -m evisi_eval run-v06 --samples data/user_samples.jsonl --outputs data/user_two_files_si_only_outputs.jsonl --provider deepseek --run-name v061_smoke --output-dir results --limit-samples 1 --limit-outputs 1
 ```
 
 一个样本有多个系统时，所有系统都会跑；只跑一个输出可加 `--limit-outputs 1`，或加 `--system-name 系统名`。
 
 ## 5. 检查结果
 
-先看 `results/smoke_v05/failures.jsonl`。为空时再看：
+先看 `results/v061_smoke/failures.jsonl`。为空时再看：
 
-- `source/source_cards.jsonl`：冻结源证据和 importance。
-- `target/target_eval_cards.jsonl`：对齐、目标盲抽取和表达问题。
-- `score/score_01_primary_judgements.jsonl`：首轮判断。
-- `score/score_02_review_judgements.jsonl`：独立复核。
-- `score/score_03_adjudications.jsonl`：仅争议/低置信度项目。
-- `score/score_06_final_results.jsonl`：最终 evidence、coverage、score status 和分数。
+- `source/source_cards_v06.jsonl`：冻结 Source 义务。
+- `reference/reference_projection_cards.jsonl`：Reference 辅助投影。
+- `context/evaluation_context_cards.jsonl`：三阶段 hash 和 ID 映射。
+- `target/si_projection_cards.jsonl`：同传逐项投影。
+- `score/final_results_v06.jsonl`：逐项诊断、score status 和分数。
 - `report.html`：浏览报告。
 
 ## 6. 失败处理

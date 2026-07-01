@@ -75,7 +75,7 @@ def get_provider_config(provider: str | None = None) -> ProviderConfig:
         base_url=base_url.rstrip("/"),
         timeout_seconds=_int_setting("EVISI_TIMEOUT_SECONDS", 900),
         max_retries=_int_setting("EVISI_MAX_RETRIES", 3),
-        max_output_tokens=_int_setting("EVISI_MAX_OUTPUT_TOKENS", 32768),
+        max_output_tokens=_int_setting("EVISI_MAX_OUTPUT_TOKENS", 16384),
     )
 
 

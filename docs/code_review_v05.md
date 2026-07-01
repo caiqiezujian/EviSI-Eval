@@ -18,7 +18,7 @@
 ### 1. 信息隔离在代码层强制，不依赖 Prompt 自觉
 
 - `agents.py:151-171` TargetEvidenceAgent 构造 payload 时**只取 `eval_unit_id + target_unit`**，没有 source 字段
-- `tests/test_agents.py::test_target_evidence_agent_cannot_see_source` 验证 payload 序列化后 `Mark left.` 字符串、`source_` 字段名都不能出现
+- `tests/test_agents.py::test_target_evidence_agent_cannot_see_source` 验证 payload 序列化后合成源句、`source_` 字段名都不能出现
 - `agents.py:213-228` Reviewer 的 payload 与 Primary 完全相同（结构上），但通过 `Runner.run` 调用不同 prompt，且 prompt 自身声明"看不到首轮"
 - `tests/test_agents.py::test_reviewer_is_blind_to_primary_and_real_system_name` 验证 Reviewer payload 不含 `primary`/`judgement` 字样，且不含真实 `system_name`
 

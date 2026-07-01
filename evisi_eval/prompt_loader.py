@@ -7,55 +7,27 @@ from pathlib import Path
 
 
 PROMPT_DIR = Path(__file__).resolve().parent.parent / "prompts"
-SHARED_SEMANTIC_PROTOCOL = "semantic_extraction_protocol.md"
-SEMANTIC_AGENT_PROMPTS = {"source_evidence_agent", "target_evidence_agent"}
-
 PROMPT_FILES = {
-    "source_evidence_agent": "source_evidence_agent.md",
-    "alignment_agent": "alignment_agent.md",
-    "target_evidence_agent": "target_evidence_agent.md",
+    # v0.7 agents — source (4)
+    "v07_source_segment": "source/v07_source_segment.md",
+    "v07_source_anchor": "source/v07_source_anchor.md",
+    "v07_source_event": "source/v07_source_event.md",
+    "v07_source_relation": "source/v07_source_relation.md",
+    # v0.7 agents — reference (4)
+    "v07_reference_align": "reference/v07_reference_align.md",
+    "v07_reference_anchor": "reference/v07_reference_anchor.md",
+    "v07_reference_event": "reference/v07_reference_event.md",
+    "v07_reference_relation": "reference/v07_reference_relation.md",
+    # v0.7 agents — SI (4)
+    "v07_si_align": "si/v07_si_align.md",
+    "v07_si_anchor_match": "si/v07_si_anchor_match.md",
+    "v07_si_event_match": "si/v07_si_event_match.md",
+    "v07_si_relation_match": "si/v07_si_relation_match.md",
+    # Delivery
     "fluency_agent": "fluency_agent.md",
     "si_expression_agent": "si_expression_agent.md",
-    "primary_judge_agent": "primary_judge_agent.md",
-    "reviewer_agent": "reviewer_agent.md",
-    "adjudicator_agent": "adjudicator_agent.md",
-    "summary_agent": "summary_agent.md",
+    # Shared
     "schema_repair": "schema_repair.md",
-    "v06_source_segment_agent": "v06_source_segment_agent.md",
-    "v06_source_anchor_agent": "v06_source_anchor_agent.md",
-    "v06_source_event_agent": "v06_source_event_agent.md",
-    "v06_source_relation_agent": "v06_source_relation_agent.md",
-    "v06_target_alignment_agent": "v06_target_alignment_agent.md",
-    "v06_reference_anchor_projection_agent": "v06_reference_anchor_projection_agent.md",
-    "v06_reference_event_projection_agent": "v06_reference_event_projection_agent.md",
-    "v06_reference_relation_projection_agent": "v06_reference_relation_projection_agent.md",
-    "v06_si_anchor_projection_agent": "v06_si_anchor_projection_agent.md",
-    "v06_si_event_projection_agent": "v06_si_event_projection_agent.md",
-    "v06_si_relation_projection_agent": "v06_si_relation_projection_agent.md",
-}
-
-V06_PROMPT_COMPONENTS = {
-    "v06_source_anchor_agent": ("v06_anchor_protocol.md",),
-    "v06_reference_anchor_projection_agent": (
-        "v06_anchor_protocol.md", "v06_projection_protocol.md",
-    ),
-    "v06_si_anchor_projection_agent": (
-        "v06_anchor_protocol.md", "v06_projection_protocol.md",
-    ),
-    "v06_source_event_agent": ("v06_event_protocol.md",),
-    "v06_reference_event_projection_agent": (
-        "v06_event_protocol.md", "v06_projection_protocol.md",
-    ),
-    "v06_si_event_projection_agent": (
-        "v06_event_protocol.md", "v06_projection_protocol.md",
-    ),
-    "v06_source_relation_agent": ("v06_relation_protocol.md",),
-    "v06_reference_relation_projection_agent": (
-        "v06_relation_protocol.md", "v06_projection_protocol.md",
-    ),
-    "v06_si_relation_projection_agent": (
-        "v06_relation_protocol.md", "v06_projection_protocol.md",
-    ),
 }
 
 
@@ -65,19 +37,7 @@ def load_prompt(name: str) -> str:
         filename = PROMPT_FILES[name]
     except KeyError as exc:
         raise KeyError(f"Unknown prompt: {name}") from exc
-    prompt = (PROMPT_DIR / filename).read_text(encoding="utf-8")
-    if name in V06_PROMPT_COMPONENTS:
-        components = [
-            (PROMPT_DIR / component).read_text(encoding="utf-8")
-            for component in V06_PROMPT_COMPONENTS[name]
-        ]
-        return "\n\n---\n\n".join([*components, prompt])
-    if name in SEMANTIC_AGENT_PROMPTS:
-        shared_path = PROMPT_DIR / SHARED_SEMANTIC_PROTOCOL
-        if shared_path.exists():
-            shared = shared_path.read_text(encoding="utf-8")
-            return shared + "\n\n---\n\n" + prompt
-    return prompt
+    return (PROMPT_DIR / filename).read_text(encoding="utf-8")
 
 
 def prompt_manifest() -> dict[str, str]:

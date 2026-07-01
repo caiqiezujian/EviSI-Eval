@@ -12,6 +12,10 @@ from typing import Any, Protocol
 from .config import ProviderConfig
 
 
+class ProviderOutputError(ValueError):
+    """The provider returned a response, but its model content was not valid JSON."""
+
+
 @dataclass
 class LLMResponse:
     data: dict[str, Any]
@@ -36,11 +40,19 @@ class HTTPJSONClient:
         self.model_name = config.model
 
     def generate_json(self, system_prompt: str, payload: dict[str, Any], task: str) -> LLMResponse:
-        if self.config.protocol == "gemini":
-            return self._call_gemini(system_prompt, payload, task)
-        if self.config.protocol == "openai_compatible":
-            return self._call_openai_compatible(system_prompt, payload, task)
-        raise ValueError(f"Unsupported provider protocol: {self.config.protocol}")
+        last_error: ProviderOutputError | None = None
+        for attempt in range(2):
+            try:
+                if self.config.protocol == "gemini":
+                    return self._call_gemini(system_prompt, payload, task)
+                if self.config.protocol == "openai_compatible":
+                    return self._call_openai_compatible(system_prompt, payload, task)
+                raise ValueError(f"Unsupported provider protocol: {self.config.protocol}")
+            except ProviderOutputError as exc:
+                last_error = exc
+                if attempt == 0:
+                    time.sleep(1)
+        raise last_error or RuntimeError(f"{task}: provider output retry failed")
 
     def _call_openai_compatible(
         self, system_prompt: str, payload: dict[str, Any], task: str
@@ -69,8 +81,12 @@ class HTTPJSONClient:
             content = raw["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError) as exc:
             raise RuntimeError(f"{task}: provider returned an unexpected chat-completions shape") from exc
+        try:
+            data = parse_json_object(content)
+        except ValueError as exc:
+            raise ProviderOutputError(f"{task}: provider returned invalid JSON: {exc}") from exc
         return LLMResponse(
-            data=parse_json_object(content),
+            data=data,
             provider=self.provider_name,
             model=self.model_name,
             request_id=headers.get("x-request-id") or raw.get("id"),
@@ -101,8 +117,12 @@ class HTTPJSONClient:
         except (KeyError, IndexError, TypeError) as exc:
             raise RuntimeError(f"{task}: Gemini returned an unexpected response shape") from exc
         usage = raw.get("usageMetadata") or {}
+        try:
+            data = parse_json_object(content)
+        except ValueError as exc:
+            raise ProviderOutputError(f"{task}: provider returned invalid JSON: {exc}") from exc
         return LLMResponse(
-            data=parse_json_object(content),
+            data=data,
             provider=self.provider_name,
             model=self.model_name,
             request_id=headers.get("x-request-id"),

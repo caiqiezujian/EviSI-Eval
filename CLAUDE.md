@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project overview
 
-EviSI-Eval is an LLM-driven evaluation agent for simultaneous interpretation (SI) quality. Protocol version `evisi_eval_v0.5`, implementation version `0.5.0`.
+EviSI-Eval is an LLM-driven evaluation agent for simultaneous interpretation (SI) quality. The current version is **v0.7**.
+
+**v0.7** (`evisi_eval_v0.7`): Source+Reference joint extraction with positional SI matching and deterministic scoring.
 
 **Core design constraint**: the LLM makes all semantic judgments; the code layer handles orchestration, structural validation, I/O, and deterministic computation. The code must never judge translation correctness.
 
-The pipeline uses a **dual-model architecture**: a primary LLM and an independent reviewer LLM each judge the same evidence, then disagreements are adjudicated by a third call. Scoring is entirely deterministic based on the structured judgements.
-
-**HTTP client**: uses Python `urllib` stdlib (no SDK required). Supports OpenAI-compatible and Gemini protocols. Hardcoded `temperature=0`, `response_format={"type":"json_object"}`. The `openai>=1.0.0` package is optional (for the `[llm]` extra only).
+**HTTP client**: uses Python `urllib` stdlib (no SDK required). Supports OpenAI-compatible and Gemini protocols. Hardcoded `temperature=0`, `response_format={"type":"json_object"}`.
 
 ## Build, test, and run
 
@@ -19,193 +19,205 @@ The pipeline uses a **dual-model architecture**: a primary LLM and an independen
 pip install -e ".[dev,llm]"
 
 # Run all tests
-python3 -m pytest -q
+python -m pytest -q
 
-# Run a single test file
-python3 -m pytest tests/test_agents.py -q
-
-# Run a single test by name
-python3 -m pytest tests/test_agents.py::test_source_card_build -q
-
-# Run v0.5 validation tests
-python3 -m pytest tests/test_protocol_v05.py -q
-
-# Run pipeline integration tests
-python3 -m pytest tests/test_pipeline.py -q
+# Run a single test
+python -m pytest tests/test_dataset.py -q
 ```
 
-Tests use `ScriptedLLMClient` (in `evisi_eval/llm_provider.py`) — a deterministic, in-memory client with pre-baked JSON responses. **No API keys needed.** Test fixture helpers in `test_agents.py` return complete response dicts and are shared with `test_pipeline.py`.
+Tests use `ScriptedLLMClient` (in `evisi_eval/llm_provider.py`) — a deterministic, in-memory client with pre-baked JSON responses. **No API keys needed.**
 
 ## CLI entry points
 
 ```bash
-# Full evaluation pipeline
+# v0.7 full evaluation
 python3 -m evisi_eval run --samples <samples.jsonl> --outputs <outputs.jsonl> --run-name my_run
 
-# Run with independent reviewer model
-python3 -m evisi_eval run --samples <samples.jsonl> --outputs <outputs.jsonl> \
-  --provider openai --review-provider deepseek --run-name cross_model
+# v0.7 offline input validation (no API call)
+python3 -m evisi_eval check-input --samples <samples.jsonl> --outputs <outputs.jsonl>
+
+# Verify provider connectivity
+python3 -m evisi_eval check-provider --provider deepseek
 
 # Prepare standardized input data
 python3 -m evisi_eval prepare-data --samples data/user_samples.jsonl --outputs data/user_system_outputs.jsonl --output-dir data/user_samples_v03
 
-# Verify provider connectivity and JSON compliance
-python3 -m evisi_eval check-provider --provider deepseek
-
-# Convert wide-format data to long-format JSONL
+# Convert wide-format to long-format JSONL
 python3 -m evisi_eval import-data --input data/raw_zh.json data/raw_en.json \
   --samples-output data/samples.jsonl --outputs-output data/outputs.jsonl
-
-# Smoke test (end-to-end on one sample)
-.\scripts\run_smoke_deepseek.ps1   # Windows / PowerShell
 ```
 
-Optional flags for `run`: `--resume` (hash-matched config guard), `--sample-id`, `--system-name`, `--limit-samples`, `--limit-outputs`.
+Optional flags for `run`: `--resume` (hash-matched config guard), `--sample-id`, `--system-name`, `--limit-samples`, `--limit-outputs`, `--provider` (deepseek/openai/gemini/custom), `--output-dir`.
 
 ## Architecture
 
-### Data objects
+### v0.7 Design
 
-Three core structures flow through the pipeline (JSON schemas in `schemas/`):
+v0.7 uses **joint extraction + positional matching**: Source and Reference are extracted together into a frozen Joint Card (8 LLM calls). SI systems then match positionally against the frozen Joint Card (6 LLM calls per system). Arrays are aligned by index (source[i] ↔ reference[i] ↔ si[i]), not by ID cross-references.
 
-1. **`source_card`** — frozen once per sample. Contains `source_units`, `source_anchors`, `source_events`, `source_relations`. Its hash is cached; shared across all systems evaluating that sample.
-2. **`target_eval_card`** — built per (sample, system). Contains `eval_units` (aligned segmentation), target anchors/events/relations, fluency issues, SI expression issues.
-3. **`final_result`** — merged primary + reviewer judgements, adjudicated disagreements, deterministic dimension scores, weighted final score, and narrative summary.
+**One frozen Joint Card per sample**, shared across all SI systems:
 
-### Agent model
+Source side (4 LLM calls):
+1. **Source Segments** — segment source text (~2 sentences each)
+2. **Source Anchors** — typed anchors (entity/term/quantity/temporal/scope) with importance 1-3
+3. **Source Events** — structured events with predicate/semantic role arguments
+4. **Source Relations** — relations between events (cause_effect, temporal_sequence, etc.)
 
-The evaluation is decomposed into 9 LLM agents, each with a dedicated prompt file under `prompts/`:
+Reference side (4 LLM calls):
+5. **Reference Align** — align reference translation to source segments
+6. **Reference Anchors** — position-corresponding reference anchor expressions
+7. **Reference Events** — position-corresponding reference event expressions
+8. **Reference Relations** — position-corresponding reference relation expressions
 
-| Agent class (in `agents.py`) | Prompt file | What it does |
+The Joint Card is assembled by Python via positional zip of source + reference arrays. Frozen with `joint_card_hash`.
+
+**Per-system** (6 LLM calls): SI Align + SI Anchor Match + SI Event Match + SI Relation Match + Fluency + SI Expression → deterministic scoring.
+
+**Key v0.7 design rules**:
+- Source is the only semantic authority; Reference is auxiliary.
+- SI ≠ Reference is never automatically an error. SI matching Source in a different way → equivalent.
+- Positional array alignment: source[i] ↔ reference[i] ↔ si[i], not ID cross-references.
+- No protocol injection — all prompts are self-contained.
+- Flat JSON output — no nested component_results, operators grids, or hard_requirement structures.
+- No accepted/rejected form lists — only single required forms where justified.
+
+### v0.7 Call flow (14 phases)
+
+```
+Sample-level (shared across all systems):
+  Phase 1   v07_source_segment        → source_segments
+  Phase 2   v07_source_anchor         → source_anchors
+  Phase 3   v07_source_event          → source_events
+  Phase 4   v07_source_relation       → source_relations
+  Phase 5   v07_reference_align       → reference_segments (aligned to source)
+  Phase 6   v07_reference_anchor      → reference_anchors
+  Phase 7   v07_reference_event       → reference_events
+  Phase 8   v07_reference_relation    → reference_relations
+            ☑ Joint Card assembled (Python zip) + frozen
+
+Per-sample × system:
+  Phase 9   v07_si_align              → si_segments (aligned to source)
+  Phase 10  v07_si_anchor_match       → anchor_matches (positional)
+  Phase 11  v07_si_event_match        → event_matches (positional)
+  Phase 12  v07_si_relation_match     → relation_matches (positional)
+  Phase 13  FluencyAgent              → fluency issues
+  Phase 14  SIExpressionAgent         → SI expression issues
+            ☑ Python deterministic scoring
+```
+
+### Agent prompts (v0.7)
+
+15 prompt files under `prompts/` (12 v07_* + 3 shared):
+
+| Prompt name | File | Role |
 |---|---|---|
-| `SourceCardAgent` | `source_evidence_agent.md` | Segment source, extract anchors/events/relations. Runs once per sample. |
-| `AlignmentAgent` | `alignment_agent.md` | Align target translation to source units. Runs per system. |
-| `TargetEvidenceAgent` | `target_evidence_agent.md` | Extract target-side anchors/events/relations **without seeing source text**. |
-| `FluencyAgent` | `fluency_agent.md` | Rate fluency, find disfluencies. Sees only the translation. |
-| `SIExpressionAgent` | `si_expression_agent.md` | Evaluate SI-specific delivery issues. Sees source + translation. |
-| `JudgeAgent` (primary) | `primary_judge_agent.md` | Judge source items against target evidence. |
-| `JudgeAgent` (reviewer) | `reviewer_agent.md` | Independent re-judgement of the same evidence. |
-| `AdjudicatorAgent` | `adjudicator_agent.md` | Resolve disagreements between primary and reviewer. |
-| `SummaryAgent` | `summary_agent.md` | Write narrative summary from structured scores. |
-| *(repair)* | `schema_repair.md` | Structural repair prompt, called when validation fails. |
-
-### Agent trace structure
-
-Every LLM call records: `{task, provider, model, request_id, usage}`. The `_canonicalize()` function in `agents.py` always injects `sample_id` and `system_name` from the payload into the LLM output, ensuring these keys survive repair/fallback.
-
-### Call flow
-
-```
-run_pipeline (pipeline.py)
-  └─ SourceCardAgent.build(sample)              → source_card (frozen, cached)
-  └─ EvaluationAgentLoop.run(source_card, output)  — per (sample, system)
-       ├─ AlignmentAgent.align(...)              → eval_units
-       ├─ TargetEvidenceAgent.analyze(...)       → target anchors/events/relations
-       ├─ FluencyAgent.evaluate(...)             → fluency issues + assessment
-       ├─ SIExpressionAgent.evaluate(...)        → SI expression issues + assessment
-       ├─ target_eval_card assembled
-       ├─ JudgeAgent.judge(...) primary          → anchor/event/relation judgements
-       ├─ JudgeAgent.judge(...) reviewer         → independent judgements
-       ├─ _build_disagreement_cases(...)         → diff primary vs reviewer
-       ├─ AdjudicatorAgent.adjudicate(...)       → resolve disagreements (if any)
-       ├─ calculate_scores(...) deterministic    → dimension scores + final score
-       └─ SummaryAgent.summarize(...)            → narrative summary
-```
+| `v07_source_segment` | `source/v07_source_segment.md` | Segment source text (~2 sentences) |
+| `v07_source_anchor` | `source/v07_source_anchor.md` | Extract source anchors with type + importance |
+| `v07_source_event` | `source/v07_source_event.md` | Extract events with predicate + arguments |
+| `v07_source_relation` | `source/v07_source_relation.md` | Extract relations between events |
+| `v07_reference_align` | `reference/v07_reference_align.md` | Align reference translation to source segments |
+| `v07_reference_anchor` | `reference/v07_reference_anchor.md` | Position-corresponding ref anchor expressions |
+| `v07_reference_event` | `reference/v07_reference_event.md` | Position-corresponding ref event expressions |
+| `v07_reference_relation` | `reference/v07_reference_relation.md` | Position-corresponding ref relation expressions |
+| `v07_si_align` | `si/v07_si_align.md` | Align SI translation to source segments |
+| `v07_si_anchor_match` | `si/v07_si_anchor_match.md` | Match SI against joint anchors (positional) |
+| `v07_si_event_match` | `si/v07_si_event_match.md` | Match SI against joint events (positional) |
+| `v07_si_relation_match` | `si/v07_si_relation_match.md` | Match SI against joint relations (positional) |
+| `fluency_agent` | `fluency_agent.md` | Evaluate SI fluency (Phase 13) |
+| `si_expression_agent` | `si_expression_agent.md` | Evaluate SI expression quality (Phase 14) |
+| `schema_repair` | `schema_repair.md` | Structural repair (shared by all agents) |
 
 ### Key modules
 
 | Module | Role |
 |---|---|
-| `evisi_eval/agents.py` | `Runner` (LLM call + repair + fallback), 9 agent classes, `EvaluationAgentLoop`, disagreement builder, judgement merger |
-| `evisi_eval/pipeline.py` | `run_pipeline` — file I/O, source_card caching, failure tracking, metrics computation, HTML report generation |
-| `evisi_eval/validation.py` | Structural validators, ID scheme enforcement, `calculate_scores()` (deterministic weighted scoring), verdict sets, dimension constants |
-| `evisi_eval/llm_provider.py` | `HTTPJSONClient` (OpenAI-compatible + Gemini, stdlib `urllib`), `ScriptedLLMClient` (tests), JSON parsing with markdown fence stripping |
-| `evisi_eval/config.py` | `ProviderConfig` (protocol, api_key, model, base_url, timeout_seconds=180, max_retries=2); resolves from `local_secrets.py` then env vars |
-| `evisi_eval/prompt_loader.py` | Maps 10 prompt names to `.md` files; returns SHA-256 manifest for run reproducibility |
-| `evisi_eval/cli.py` | argparse CLI: `run`, `prepare-data`, `check-provider`, `import-data` |
-| `evisi_eval/report.py` | `export_html_report` — standalone HTML with per-system aggregates and per-result detail sections |
-| `evisi_eval/dataset.py` | `prepare_dataset` — validate and split user data into standardized v0.5 layout with smoke subset |
-| `evisi_eval/importers.py` | Wide-format JSON to long-format JSONL conversion (`convert_wide_rows`) |
+| `evisi_eval/v07_agents.py` | `V07JointCardBuilder` (phases 1-8), `V07SIMatcher` (phases 9-14) |
+| `evisi_eval/v07_pipeline.py` | `run_v07_pipeline()` — orchestration, stage-level caching, resume, metrics, `check_v07_input_files()` |
+| `evisi_eval/v07_validation.py` | All validators, `calculate_v07_scores()`, dimension weights, status values |
+| `evisi_eval/agents.py` | `Runner` (LLM call + repair + fallback), `FluencyAgent`, `SIExpressionAgent`, `StageResult` |
+| `evisi_eval/llm_provider.py` | `HTTPJSONClient` (OpenAI + Gemini, stdlib `urllib`), `ScriptedLLMClient` (tests) |
+| `evisi_eval/config.py` | `ProviderConfig` (protocol, api_key, model, base_url, timeout_seconds=180, max_retries=2) |
+| `evisi_eval/prompt_loader.py` | Maps prompt names to `.md` files; SHA-256 manifest for reproducibility |
+| `evisi_eval/dataset.py` | `prepare_dataset()` — split a wide-format input into per-sample v0.7 directories |
+| `evisi_eval/importers.py` | `import_wide_files()` — convert wide-format JSON/JSONL into v0.7 inputs |
+| `evisi_eval/cli.py` | argparse CLI: `run`, `check-input`, `check-provider`, `prepare-data`, `import-data` |
 | `evisi_eval/io_utils.py` | `read_jsonl`, `write_jsonl`, `append_jsonl`, `read_json`, `write_json` |
 
 ### Runner failure strategy
 
-Each `Runner.run()` call (`agents.py:43`) follows:
+Each `Runner.run()` call:
 1. One LLM call with the agent prompt
 2. Structural validation — if it passes, done
-3. **1** repair attempt via `schema_repair.md` prompt, re-validated
-4. If still failing, an optional deterministic fallback is applied
-5. If fallback also fails, a `ValueError` is raised
+3. Up to `MAX_REPAIR_ATTEMPTS=2` repair attempts via `schema_repair.md`
+4. If still failing + fallback exists → use fallback
+5. If no fallback → raise `ValueError`
 
-## Prompt input isolation rules (critical)
+### Stage-level caching
 
-- Source evidence agent sees **only** `source_text` — never any translation or reference.
-- Alignment agent sees `source_units` + `si_translation` — the one bridge between source and target.
-- Target evidence agent sees **only** `eval_unit_id` + `target_unit` — **never** `source_unit_ids` or source text.
-- Fluency agent sees **only** `si_translation` — never source text.
-- SI expression agent sees `source_text` + `si_translation` (needed to evaluate SI-specific delivery) — never reference translation.
-- Primary/reviewer judges see `source_card` (source semantics only) + `target_eval_card` (target semantics + delivery issues) — never raw text.
-- System names are passed as `"anonymous_system"`; real names are restored by code when writing outputs.
-- Reference translations are **never** passed to any LLM agent.
+Each of the 14 phases caches its result individually under `<stage_dir>/0X_<stage_name>.json`. Resume reuses cached stages when the stage input hash matches. This means:
+- Joint card stages (1-8) survive independently
+- SI match stages (9-14) survive independently
+- A failed SI match only re-runs stages 9-14 for that system, not the shared joint card
 
-## Scoring model
+### v0.7 Scoring model
 
-`calculate_scores()` in `validation.py:191` is fully deterministic:
+`calculate_v07_scores()` in `v07_validation.py` is fully deterministic:
 
-- **Fidelity dimensions** (anchor/event/relation): weighted by source-item `importance` (1–3). Each judgement verdict maps to a numeric value via `VERDICT_VALUES`. Score = weighted earned / weighted decided, renormalized when a dimension has no source items.
-- **Verdict sets differ by dimension**: anchors/events use `{correct, partially_correct, incorrect, missing, uncertain}`; relations use `{correct, weakened, incorrect, missing, uncertain}`.
-- **Delivery dimensions** (fluency/si_expression): start at 100, deduct per-issue severity via `SEVERITY_DEDUCTIONS` (minor: 2, moderate: 6, major: 15, critical: 35). Same `target_span` cannot be deducted twice.
-- **Score status**: `final` (all decided, confidence ≥ 0.60), `provisional_review_required` (uncertain or low-confidence items), or `provisional_no_decisions` (all fidelity items uncertain — score is `null`).
-- **Final score**: weighted average across all applicable dimensions, with weights renormalized when a dimension is N/A.
-- Constants in `validation.py`: `DIMENSION_WEIGHTS` (anchor:30, event:25, relation:20, fluency:15, si_expression:10), `VERDICT_VALUES`, `SEVERITY_DEDUCTIONS`, `MIN_FINAL_CONFIDENCE` (0.60).
+- **Fidelity dimensions** (anchor/event/relation): each source item → one match. `match` value maps via `STATUS_VALUES`. Weighted by `importance` (1-3).
+  - `equivalent` = 1.0, `partial` = 0.5, `contradiction`/`missing` = 0.0, `uncertain`/`not_scored` = excluded from denominator.
+- **Relation dependency blocking**: if an endpoint event is missing/uncertain, the relation is `not_scored` (not double-penalized).
+- **Delivery dimensions** (fluency/si_expression): start at 100, deduct per-issue severity (minor:2, moderate:6, major:15, critical:35). Same `target_span` cannot be deducted twice.
+- **Score status**: `final`, `provisional_review_required` (uncertain items), `provisional_no_decisions` (all fidelity items uncertain → score=`null`).
+- **Dimension weights**: anchor:35, event:35, relation:10, fluency:12, si_expression:8.
 
-## Configuration
+## Prompt input isolation (v0.7)
 
-API keys and model selection via `config.py:get_provider_config()`:
-1. First checks `local_secrets.py` (git-ignored, from `local_secrets.py.example`)
-2. Then environment variables
-
-Provider env vars follow `{PROVIDER}_API_KEY`, `{PROVIDER}_MODEL`, `{PROVIDER}_BASE_URL`. The `custom` provider uses `EVISI_CUSTOM_*` prefix and `EVISI_CUSTOM_PROTOCOL`.
-
-Additional env vars: `EVISI_PRIMARY_PROVIDER` (default provider name), `EVISI_REVIEW_PROVIDER` (separate reviewer, defaults to primary), `EVISI_TIMEOUT_SECONDS` (default 180), `EVISI_MAX_RETRIES` (default 2).
+- Source Segment/Anchor/Event/Relation agents see **only** source text/segments — never any translation.
+- Reference agents see source card + reference translation — the Reference is extracted positionally, not projected.
+- SI agents see joint card + SI translation. Reference expressions are presented as auxiliary (not gold standard).
+- Fluency agent sees **only** SI translation.
+- SI Expression agent sees source text + SI translation.
+- System names are `"anonymous_system"`; real names restored by code.
+- All agents are prohibited from outputting scores.
 
 ## Test patterns
 
-Tests use `ScriptedLLMClient` which returns pre-baked JSON from an ordered list. Key patterns:
+- **v0.7 pipeline tests**: fixture helpers return complete dicts per stage. Construct a `ScriptedLLMClient` with 14 ordered responses and validate the full pipeline.
+- Tests are in `tests/` directory.
 
-- **Response fixture helpers** in `test_agents.py` return complete dicts matching the expected schema for each agent (e.g. `source_response()`, `alignment_response()`).
-- **Pipeline tests** (`test_pipeline.py`) construct `ScriptedLLMClient` with ordered response lists: `[source_response(), *per_output_responses(), *per_output_responses()]` for a 1-sample, 2-system run.
-- **Validation tests** (`test_protocol_v05.py`) call validator functions directly with minimal in-line dicts, testing specific constraint violations.
+## Configuration
 
-## Output structure
+Provider config via `config.py:get_provider_config()`:
+1. `local_secrets.py` (git-ignored, from `local_secrets.py.example`)
+2. Environment variables: `{PROVIDER}_API_KEY`, `{PROVIDER}_MODEL`, `{PROVIDER}_BASE_URL`
+
+The `custom` provider uses `EVISI_CUSTOM_*` prefix and `EVISI_CUSTOM_PROTOCOL`. Env vars: `EVISI_PRIMARY_PROVIDER`, `EVISI_TIMEOUT_SECONDS` (default 180), `EVISI_MAX_RETRIES` (default 2).
+
+## Output structure (v0.7)
 
 ```
 results/<run_name>/
-├── source/
-│   ├── source_00_input.jsonl       # input samples (copied)
-│   └── source_cards.jsonl          # frozen source cards
-├── target/
-│   ├── target_00_input.jsonl       # input outputs (copied)
-│   └── target_eval_cards.jsonl     # per-system eval cards
-├── score/
-│   ├── score_01_primary_judgements.jsonl
-│   ├── score_02_review_judgements.jsonl
-│   ├── score_03_adjudications.jsonl
-│   └── score_06_final_results.jsonl
-├── agent_trace.jsonl               # all LLM calls with usage
+├── joint/joint_cards_v07.jsonl          # frozen joint cards
+├── joint/stages/<sample_id>/            # per-stage cached results (phases 1-8)
+├── joint/source_00_input.jsonl          # input samples
+├── target/si_cards_v07.jsonl            # SI match cards
+├── target/stages/<sample_id>/<system>/  # per-stage cached results (phases 9-14)
+├── target/target_00_input.jsonl         # input outputs
+├── score/final_results_v07.jsonl        # final scores
 ├── failures.jsonl
-├── metrics.json
-├── run_manifest.json               # input/prompt/impl/score-config hashes
-└── report.html                     # standalone HTML report
+├── metrics_v07.json
+└── run_manifest_v07.json
 ```
 
 ## Key design decisions
 
-- **Evidence is always verbatim**: every `evidence_span`, `target_span` is validated to appear verbatim in the corresponding unit text.
-- **Lossless segmentation**: source/target unit concatenation must equal the original text. Enforced by validators.
-- **Every source_unit_id appears exactly once** across eval_units; source_unit_ids must be adjacent and ordered.
-- **Sequential IDs**: items use sequential prefixed IDs (SA1, SE1, TA1, TE1, AJ1, EJ1, RJ1, F1, X1, SR1, TR1). Uniqueness and order validated.
-- **Frozen source card**: source-card artifacts include a content hash (`source_card_hash`) and a `frozen_before_system_evaluation` flag.
-- **Dual-model judgement**: primary and reviewer are independent LLM calls over the same evidence. Disagreements (different verdicts or confidence < 0.60) trigger an adjudication agent. If both agree, confidence is the minimum of the two.
-- **No raw text in scoring**: scoring only consumes structured judgements, never raw source/translation text.
-- **`src/` directory is stale**: contains only `__pycache__` artifacts from a previous version. Active code is in `evisi_eval/`.
+- **Source is the only semantic authority.** Reference is auxiliary. SI ≠ Reference is not an automatic error.
+- **Positional alignment.** Source[i] ↔ Reference[i] ↔ SI[i] via array indices, not ID cross-references. Validated by array length equality.
+- **Evidence is always verbatim.** Every `source_evidence`, `reference_evidence`, and `si_evidence` is validated to appear verbatim in its corresponding segment text.
+- **Lossless segmentation.** Source segment concatenation must equal the original source text. Same for reference and SI alignment.
+- **Self-contained prompts.** No protocol injection — each prompt is fully self-contained with all rules, examples, and output schema.
+- **Flat JSON output.** No nested component_results, operators grids, or hard_requirement structures. Simple arrays of flat objects.
+- **Sequential IDs.** All item IDs use sequential prefixed numbering (S1, SA1, SE1, SR1, etc.). Uniqueness and order enforced by validators.
+- **Frozen cards with content hashes.** Joint Card includes a SHA-256 hash of all fields except `metadata`. Resume validates hash match before reusing.
+- **No dual-model review.** v0.7 uses single-pass matching (simpler, faster). No primary+reviewer+adjudicator pattern.
+- **`src/` directory is stale.** Active code is in `evisi_eval/`.
